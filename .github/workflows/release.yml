@@ -32,18 +32,23 @@ jobs:
         id: version
         env:
           IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           version="$(python3 -c 'import json; print(json.load(open("custom_components/porchcast/manifest.json"))["version"])')"
           if [[ "$IS_MAIN" != "true" ]]; then
             # Pre-release of the version this branch bumped to: the next free vX.Y.ZbN.
             # The branch must already be bumped above main, or HA will not offer it.
+            # A manifest already at X.Y.ZbN (from `bump_version.py beta`) counts as X.Y.Z.
+            base="${version%%b*}"
             n=0
-            while git rev-parse -q --verify "refs/tags/v${version}b${n}" >/dev/null; do n=$((n + 1)); done
-            version="${version}b${n}"
+            while git rev-parse -q --verify "refs/tags/v${base}b${n}" >/dev/null; do n=$((n + 1)); done
+            version="${base}b${n}"
             python3 scripts/set_version.py "$version"
           fi
-          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
-            echo "v${version} already exists; nothing to publish."
+          # Publish unless the release already exists. A tag left behind by a run
+          # that failed after pushing it is reused, so a rerun finishes the job.
+          if gh release view "v${version}" >/dev/null 2>&1; then
+            echo "Release v${version} already exists; nothing to publish."
             echo "publish=false" >> "$GITHUB_OUTPUT"
           else
             echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -60,14 +65,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           if [[ "$IS_MAIN" == "true" ]]; then
-            git tag "v${VERSION}"
-            git push origin "v${VERSION}"
-            gh release create "v${VERSION}" --verify-tag --generate-notes --title "v${VERSION}"
+            prerelease=""
           else
-            # The tag points at a commit whose manifest carries the pre-release version,
-            # so HA shows the right version after installing it.
+            prerelease="--prerelease"
+            # The tag points at a commit whose manifest carries the pre-release
+            # version, so HA shows the right version after installing it.
             git commit -am "Pre-release v${VERSION}"
+          fi
+          if ! git rev-parse -q --verify "refs/tags/v${VERSION}" >/dev/null; then
             git tag "v${VERSION}"
             git push origin "v${VERSION}"
-            gh release create "v${VERSION}" --verify-tag --prerelease --generate-notes --title "v${VERSION}"
           fi
+          gh release create "v${VERSION}" --verify-tag $prerelease --generate-notes --title "v${VERSION}"

@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Bump the integration version in manifest.json.
 
 Usage: scripts/bump_version.py [patch|minor|major|beta]

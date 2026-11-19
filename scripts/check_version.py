@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Fail if the integration changed but its version is not higher than the base's.
 
 Usage: scripts/check_version.py <base-ref>   (for example origin/main)

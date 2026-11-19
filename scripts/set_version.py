@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """Set the manifest version exactly. Used by release.yml for pre-releases.
 
 Usage: scripts/set_version.py X.Y.Z[bN]
