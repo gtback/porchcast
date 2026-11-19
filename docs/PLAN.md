@@ -8,7 +8,7 @@ merged; each session builds on `main`.
 
 | # | Session | Version | Status |
 | --- | --- | --- | --- |
-| 1 | Scaffold and pipeline | 0.1.0 | In progress (started 2026-11-19) |
+| 1 | Scaffold and pipeline | 0.1.0 | Released 2026-11-19 (PR #1); waiting on Marketplace install |
 | 2 | Items and storage | 0.2.0 | Not started |
 | 3 | UPS end to end | 0.3.0 | Not started |
 | 4 | FedEx | 0.4.0 | Not started |
@@ -20,9 +20,9 @@ PR whose body says what the owner must do in real HA.
 
 ### Session 1 done-when
 
-- [ ] `main` has the scaffold; CI green (lint, tests, version check, hassfest, HACS validation).
-- [ ] Repo settings: description, topics, issues enabled (owner does this by hand; no tool for it here).
-- [ ] `release.yml` published v0.1.0.
+- [x] `main` has the scaffold; CI green (lint, tests, version check, hassfest, HACS validation).
+- [x] Repo settings: description, topics, issues enabled; default branch `main`.
+- [x] `release.yml` published v0.1.0.
 - [ ] Owner installed 0.1.0 through the Marketplace and sees an empty "Porchcast Packages" list.
 
 ## Decisions
@@ -56,3 +56,10 @@ PR whose body says what the owner must do in real HA.
   custom repositories are only checked for updates every 48 hours, and the
   Marketplace docs advise restoring a backup instead of "Install another
   version" to go back after an update.
+- **PR #1 merged with `hacs` red on `license`** (owner's call). HACS reads the
+  license from the default branch, which was still the empty `main`. The same
+  check passed on `main` right after the merge.
+- **Manifest `categories`**: the HACS validator warns that the manifest has
+  none. The key is newer than the 2026.10 dev pin, and its docs host
+  (contributors.home-assistant.io) is blocked here. Revisit when the pins move
+  to 2026.11.
