@@ -1,0 +1,73 @@
+name: Release
+
+# Push to main: publish vX.Y.Z when the manifest version has no tag yet.
+# Run by hand on a PR branch: publish a pre-release vX.Y.ZbN for trying it in real HA.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  release:
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Work out the version
+        id: version
+        env:
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          version="$(python3 -c 'import json; print(json.load(open("custom_components/porchcast/manifest.json"))["version"])')"
+          if [[ "$IS_MAIN" != "true" ]]; then
+            # Pre-release of the version this branch bumped to: the next free vX.Y.ZbN.
+            # The branch must already be bumped above main, or HA will not offer it.
+            n=0
+            while git rev-parse -q --verify "refs/tags/v${version}b${n}" >/dev/null; do n=$((n + 1)); done
+            version="${version}b${n}"
+            python3 scripts/set_version.py "$version"
+          fi
+          if git rev-parse -q --verify "refs/tags/v${version}" >/dev/null; then
+            echo "v${version} already exists; nothing to publish."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag and publish
+        if: steps.version.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
+          IS_MAIN: ${{ github.ref == 'refs/heads/main' }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ "$IS_MAIN" == "true" ]]; then
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+            gh release create "v${VERSION}" --verify-tag --generate-notes --title "v${VERSION}"
+          else
+            # The tag points at a commit whose manifest carries the pre-release version,
+            # so HA shows the right version after installing it.
+            git commit -am "Pre-release v${VERSION}"
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+            gh release create "v${VERSION}" --verify-tag --prerelease --generate-notes --title "v${VERSION}"
+          fi

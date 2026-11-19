@@ -1,0 +1,12 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "Set up Porchcast to track packages on a to-do list."
+      }
+    },
+    "abort": {
+      "single_instance_allowed": "Porchcast is already set up."
+    }
+  }
+}
