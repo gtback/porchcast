@@ -3,10 +3,10 @@
 # dependencies. Does nothing on a local machine.
 #
 # Sandbox notes (also in AGENTS.md, "Cloud gotchas"):
-# - Only package registries and GitHub are reachable. PyPI and uv's Python
-#   downloads (python-build-standalone on GitHub) work through the proxy.
-# - home-assistant.io, hacs.xyz and the carrier APIs are blocked, so HA docs
-#   must be read from the installed source in .venv instead.
+# - The network allows package registries, GitHub, hacs.xyz and the
+#   home-assistant.io docs hosts. PyPI and uv's Python downloads
+#   (python-build-standalone on GitHub) work through the proxy.
+# - Carrier APIs are blocked; tests use recorded fixtures only.
 # - The environment sets UV_NATIVE_TLS, which uv 0.11+ warns is deprecated.
 #   We map it to UV_SYSTEM_CERTS (needed so uv trusts the proxy's CA) and unset
 #   the old name to keep output quiet.

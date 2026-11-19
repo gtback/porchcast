@@ -59,10 +59,11 @@ If the hook didn't run, run it by hand:
 
 ## Cloud gotchas
 
-- Only package registries and GitHub are reachable. home-assistant.io,
-  developers.home-assistant.io, hacs.xyz and every carrier API are blocked.
-  Read HA's APIs from the installed source under
-  `.venv/lib/python3.14/site-packages/homeassistant/` instead.
+- The network allows package registries, GitHub, hacs.xyz,
+  www.home-assistant.io and developers.home-assistant.io. Every carrier API is
+  blocked. The WebFetch tool can't reach the HA/HACS docs even so; fetch them
+  with `curl` from the shell. For HA APIs, the installed source under
+  `.venv/lib/python3.14/site-packages/homeassistant/` is the ground truth.
 - HA has moved off voluptuous: core config flows use `probatio` schemas. Copy
   patterns from a similar core integration in `.venv` (for example
   `local_todo` for the to-do entity), not from memory.
@@ -71,6 +72,8 @@ If the hook didn't run, run it by hand:
   which may be older than the `hacs.json` minimum. Bump both together.
 - The environment sets `UV_NATIVE_TLS`; uv warns it is deprecated. The hook
   maps it to `UV_SYSTEM_CERTS`. Ignore the warning if you see it.
+- The Marketplace integration itself first ships in HA 2026.11, so it is not in
+  the 2026.10 dev pin. Nothing here imports it.
 - mypy: don't use `strict = true` in a per-module override; it turns off
   implicit re-export globally and breaks imports from HA packages. The strict
   flags are spelled out in `pyproject.toml`.
