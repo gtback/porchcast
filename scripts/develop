@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# Run a real Home Assistant with this integration on its path, for checking the
+# UI by hand. On my machine only; open http://localhost:8123.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+mkdir -p config
+if [[ ! -f config/configuration.yaml ]]; then
+  printf 'default_config:\nlogger:\n  default: info\n  logs:\n    custom_components.porchcast: debug\n' > config/configuration.yaml
+fi
+export PYTHONPATH="${PWD}${PYTHONPATH:+:$PYTHONPATH}"
+# HA looks for custom integrations in <config>/custom_components.
+ln -sfn ../custom_components config/custom_components
+exec uv run hass -c config --debug

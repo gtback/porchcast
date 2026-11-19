@@ -1,0 +1,72 @@
+[project]
+name = "porchcast"
+version = "0.0.0" # not used; the integration version lives in custom_components/porchcast/manifest.json
+description = "Home Assistant integration that tracks UPS, FedEx and USPS packages on a to-do list."
+readme = "README.md"
+requires-python = ">=3.14.2,<3.15"
+dependencies = []
+
+[dependency-groups]
+dev = [
+    # Pin both to the same HA release; the test package is generated per HA release.
+    "homeassistant==2026.10.4",
+    "pytest-homeassistant-custom-component==0.13.375",
+    "ruff>=0.14",
+    "mypy>=1.18",
+]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = ["error::DeprecationWarning:custom_components.*"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 88
+extend-exclude = ["config"]
+
+[tool.ruff.lint]
+# Based on Home Assistant core's rule set, trimmed for a small integration.
+select = [
+    "A", "ASYNC", "B", "BLE", "C4", "DTZ", "E", "F", "FLY", "G", "I", "ICN",
+    "INP", "ISC", "LOG", "N", "PERF", "PGH", "PIE", "PL", "PT", "RET", "RSE",
+    "RUF", "S", "SIM", "SLOT", "T100", "T20", "TID", "TRY", "UP", "W",
+]
+ignore = [
+    "E501",    # line length is handled by the formatter
+    "PLR0911", "PLR0912", "PLR0913", "PLR0915", "PLR2004",
+    "TRY003",
+    "ISC001",  # conflicts with the formatter
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101", "PLR2004", "INP001"]
+"scripts/**" = ["T201", "S603", "S607", "INP001"]
+
+[tool.ruff.lint.isort]
+force-sort-within-sections = true
+known-first-party = ["custom_components.porchcast", "tests"]
+combine-as-imports = true
+
+[tool.mypy]
+python_version = "3.14"
+show_error_codes = true
+# HA re-exports names through package __init__ modules without __all__.
+implicit_reexport = true
+
+# Strict on the pure-logic modules (added in later sessions).
+[[tool.mypy.overrides]]
+module = ["custom_components.porchcast.tracking", "custom_components.porchcast.carriers.*"]
+# Spelled out instead of `strict = true`, which also turns off implicit
+# re-export for every module that imports from HA.
+disallow_any_generics = true
+disallow_untyped_calls = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+check_untyped_defs = true
+disallow_untyped_decorators = true
+warn_return_any = true
+strict_equality = true

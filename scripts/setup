@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+# Install the pinned Python and the locked dev dependencies.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+command -v uv >/dev/null || { echo "Install uv first: https://docs.astral.sh/uv/" >&2; exit 1; }
+uv python install
+uv sync --locked

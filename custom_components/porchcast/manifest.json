@@ -1,0 +1,16 @@
+{
+  "domain": "porchcast",
+  "name": "Porchcast",
+  "codeowners": [
+    "@gtback"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/gtback/porchcast",
+  "integration_type": "service",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/gtback/porchcast/issues",
+  "requirements": [],
+  "single_config_entry": true,
+  "version": "0.1.0"
+}
