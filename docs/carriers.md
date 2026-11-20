@@ -40,3 +40,52 @@ them against real numbers with `live_check.py` once each carrier's API is in.
   space. A prefix inside a URL is ignored.
 - **Where the number is found**: the summary first, then the notes. The first
   number wins.
+
+## UPS API
+
+Implemented in `custom_components/porchcast/carriers/ups.py`. Read 2026-11-20
+from UPS's OpenAPI specs on GitHub (`UPS-API/api-documentation`,
+`Tracking.yaml` and `OAuthClientCredentials.yaml`, fetched from
+raw.githubusercontent.com). developer.ups.com itself is blocked in cloud
+sessions, so the Business Rules, Appendix (status codes) and Errors pages
+linked from the spec were not read.
+
+| | Production | Test (CIE) |
+| --- | --- | --- |
+| Token | `POST https://onlinetools.ups.com/security/v1/oauth/token` | `https://wwwcie.ups.com/...` |
+| Track | `GET https://onlinetools.ups.com/api/track/v1/details/{number}` | `https://wwwcie.ups.com/api/...` |
+
+- **Token**: HTTP Basic (client ID, secret), form body
+  `grant_type=client_credentials`. Response: `access_token`, `expires_in`
+  (seconds, as a string; ~4 h). `x-merchant-id` (account number) is optional
+  and not sent. Errors: 400 invalid request, 401 unauthorized, 403 blocked
+  merchant, 429 quota exceeded; body `response.errors[{code, message}]`. We
+  treat 400/401/403 as bad credentials (reauth), 429 as a rate limit.
+- **Track**: bearer token; headers `transId` (unique per request, 32 hex) and
+  `transactionSrc` (`porchcast`); query `locale=en_US`, `returnSignature`,
+  `returnMilestones`, `returnPOD` all `false`. Responses listed: 200, 400, 403,
+  404, 500, 503. A 401 gets a fresh token and one retry.
+- **Shape**: `trackResponse.shipment[0].package[0]` with `currentStatus`,
+  `activity[]` (newest first; `date` YYYYMMDD, `time` HHMMSS, `gmtOffset`
+  `-05:00`, `location.address`, `status{type, code, description}`),
+  `deliveryDate[]` (`type` SDD scheduled, RDD rescheduled, DEL delivered),
+  `deliveryTime` (`type` EOD, CMT commit time, EDW/CDW/IDW windows with
+  `startTime`/`endTime`, DEL delivered time), `deliveryInformation.location`.
+- **ETA**: RDD over SDD. EDW/CDW/IDW → a window on that day; CMT → "by" the end
+  time; otherwise the day. Delivery times carry no offset; they are read in
+  HA's time zone (the household's). Activity times use their `gmtOffset`.
+- **Status** (from `currentStatus`, else the latest activity): `type` D →
+  delivered; X or RS → exception; code OT/OF or "out for delivery" in the
+  description → out for delivery; M/MV → pre-transit; I/P → in transit;
+  anything else → unknown. These type and code values are the long-standing
+  Track API ones, **not confirmed** against the Appendix. Check them with
+  `live_check.py` on real packages.
+- **Not found**: 404 (`TW0001 Tracking Information Not Found`, per the
+  long-standing API; not in the spec), or a 200 with only `warnings`.
+- **Rate limits**: the spec publishes none beyond a 429 response, and reads
+  no `Retry-After`. Modeled as: on 429, 5xx or a network error, leave UPS
+  alone for `Retry-After` if sent, else 15 min doubling to 2 h; reset on any
+  answer. Data rolls off after 120 days.
+- **Unverified**: everything above that the spec doesn't show (status codes,
+  the 404 body, whether `expires_in` stays ~4 h). The fixtures in
+  `tests/fixtures/ups/` are synthetic, shaped after the spec.

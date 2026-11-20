@@ -10,7 +10,7 @@ merged; each session builds on `main`.
 | --- | --- | --- | --- |
 | 1 | Scaffold and pipeline | 0.1.0 | Done 2026-11-20 (PR #1; installed via Marketplace) |
 | 2 | Items and storage | 0.2.0 | Done 2026-11-20 (PR #2; owner added items in real HA) |
-| 3 | UPS end to end | 0.3.0 | Not started |
+| 3 | UPS end to end | 0.3.0 | PR open 2026-11-20 |
 | 4 | FedEx | 0.4.0 | Not started |
 | 5 | USPS | 0.5.0 | Not started |
 | 6 | Finish | 0.6.0 | Not started |
@@ -118,3 +118,51 @@ PR whose body says what the owner must do in real HA.
   free-text line to the status block (not the notes); no structured history.
 - **Session 2 closed** 2026-11-20: the owner updated to 0.2.0 and added items
   in real HA.
+
+### 2026-11-20 (Session 3)
+
+- **UPS API details** are in `docs/carriers.md`. The fixtures are synthetic
+  (shaped after UPS's OpenAPI spec); real ones come from `live_check.py --save`.
+- **Config entry stays version 1** (not 1 → 2 as Session 1 planned). HA
+  refuses to load an entry whose major version is above the handler's, so a
+  bump would break rolling back to 0.2.0. An entry with no credentials (0.1.0
+  and 0.2.0 made those) still loads; its items say "UPS isn't set up in
+  Porchcast", and the owner adds keys with **Reconfigure**. Removing and
+  re-adding the integration would delete the stored packages.
+- **Entry data**: `{"ups": {"client_id", "client_secret", "sandbox"}}`, one
+  key per carrier. The form has one section per carrier; at least one carrier
+  is required, and each is checked by fetching a token. The sandbox switch
+  selects UPS's CIE test environment.
+- **Reconfigure and a minimal reauth** landed now, because the coordinator
+  starts reauth on rejected credentials. Session 6 still owns the options
+  flow.
+- **Polling**: per-status intervals from the brief. A failed poll retries in
+  30 min (or the status interval, if shorter); after 5 failures in a row the
+  block says so and polling drops to every 6 h. Carrier backoff on 429, 5xx or
+  network errors: `Retry-After`, else 15 min doubling to 2 h. A rejected
+  credential stops that carrier until reauth reloads the entry; it doesn't
+  count as a package failure. Polls never run concurrently.
+- **New or re-numbered items are polled at once** (in a task, so adding an
+  item doesn't wait on UPS), not at the next tick.
+- **Delivered**: the item is checked off (completed time = delivery time) and
+  polling stops for good. Unchecking a delivered item doesn't resume polling
+  or fire again; unchecking an item checked off by hand does resume. The due
+  date stays the last ETA.
+- **ETA kept when the carrier stops giving one** (e.g. on delivery), and
+  `porchcast_eta_changed` fires only for a new, known ETA.
+- **Events**: `porchcast_eta_changed` carries `old_eta_start`, `old_eta_end`,
+  `new_eta_start`, `new_eta_end` (ISO dates or datetimes) and `status`;
+  `porchcast_status_changed` carries `old_status` (None the first time),
+  `new_status` and `description`; `porchcast_delivered` carries
+  `delivered_at` and `location`. All carry `uid`, `summary`, `carrier`,
+  `tracking_number`.
+- **Store 1.2**: poll state lives in `tracking.poll` (carrier that answered,
+  status, description, ETA, last event, delivery time and place, checked,
+  next poll, failures, problem line). Unknown keys inside it are kept. Never
+  polled → no `poll` key.
+- **Status block** lines: number, `Status: ...`, `Expected ...` or
+  `Delivered ...`, `Last scan: ...`, a problem line if any, `Checked ...`.
+  Times are in HA's time zone.
+- **mypy** now uses `explicit_package_bases`, so modules are named
+  `custom_components.porchcast.*`. Before this the strict override for
+  `tracking` and `carriers.*` matched no module; it now applies (and passes).
