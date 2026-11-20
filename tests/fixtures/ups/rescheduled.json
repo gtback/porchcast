@@ -1,0 +1,60 @@
+{
+  "trackResponse": {
+    "shipment": [
+      {
+        "inquiryNumber": "1Z999AA10123456784",
+        "package": [
+          {
+            "trackingNumber": "1Z999AA10123456784",
+            "currentStatus": {
+              "type": "X",
+              "code": "XB",
+              "description": "A delay occurred. Your delivery has been rescheduled.",
+              "simplifiedTextDescription": "Delayed"
+            },
+            "activity": [
+              {
+                "date": "20261122",
+                "time": "091500",
+                "gmtDate": "20261122",
+                "gmtOffset": "-05:00",
+                "gmtTime": "091500",
+                "location": {
+                  "address": {
+                    "city": "LOUISVILLE",
+                    "stateProvince": "KY",
+                    "countryCode": "US",
+                    "country": "US"
+                  },
+                  "slic": "0000"
+                },
+                "status": {
+                  "type": "X",
+                  "code": "XB",
+                  "description": "A delay occurred. Your delivery has been rescheduled.",
+                  "statusCode": "005"
+                }
+              }
+            ],
+            "deliveryDate": [
+              {
+                "type": "SDD",
+                "date": "20261124"
+              },
+              {
+                "type": "RDD",
+                "date": "20261125"
+              }
+            ],
+            "service": {
+              "code": "003",
+              "levelCode": "003",
+              "description": "UPS Ground"
+            },
+            "packageCount": 1
+          }
+        ]
+      }
+    ]
+  }
+}

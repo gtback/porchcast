@@ -43,7 +43,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**" = ["S101", "PLR2004", "INP001"]
+"tests/**" = ["S101", "S105", "S106", "PLR2004", "INP001"]  # fake credentials in tests
 "scripts/**" = ["T201", "S603", "S607", "INP001"]
 
 [tool.ruff.lint.isort]
@@ -54,6 +54,11 @@ combine-as-imports = true
 [tool.mypy]
 python_version = "3.14"
 show_error_codes = true
+# Module names start at the repo root (custom_components.porchcast...), as HA
+# and scripts/live_check.py import them; the strict override below matches them.
+explicit_package_bases = true
+# scripts/ import each other as top-level modules.
+mypy_path = "$MYPY_CONFIG_FILE_DIR/scripts:$MYPY_CONFIG_FILE_DIR"
 # HA re-exports names through package __init__ modules without __all__.
 implicit_reexport = true
 

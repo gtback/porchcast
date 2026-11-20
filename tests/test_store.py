@@ -5,11 +5,13 @@ from typing import Any
 
 import pytest
 
+from custom_components.porchcast.carriers.base import Eta, Event, Status
 from custom_components.porchcast.const import Carrier
 from custom_components.porchcast.store import (
     NO_NUMBER_LINE,
     SEPARATOR,
     Package,
+    PollState,
     _decode_package,
     _encode_package,
     notes_from_description,
@@ -17,6 +19,7 @@ from custom_components.porchcast.store import (
 from custom_components.porchcast.tracking import TrackingNumber
 
 UPS = "1Z999AA10123456784"
+PT = dt.timezone(dt.timedelta(hours=-8))  # US/Pacific in November
 
 
 def _package(notes: str | None = "Bike rack from REI") -> Package:
@@ -134,7 +137,7 @@ def test_unknown_tracking_data_survives_until_number_changes() -> None:
         "number": UPS,
         "carriers": ["ups", "dhl"],
         "forced": False,
-        "poll": {"failures": 2},
+        "poll": {"future_key": 2},
     }
     package = _decode_package({"uid": "a", "summary": "Rack", "tracking": tracking})
     assert package is not None
@@ -187,3 +190,111 @@ def test_notes_keep_indentation() -> None:
     assert notes_from_description(text, None) == "  indented note\n  - item"
     package = _package("  indented note")
     assert notes_from_description(package.description(), package) == ("  indented note")
+
+
+def _polled() -> Package:
+    package = _package()
+    package.poll = PollState(
+        carrier=Carrier.UPS,
+        status=Status.OUT_FOR_DELIVERY,
+        description="Out For Delivery Today",
+        eta=Eta(
+            dt.datetime(2026, 11, 24, 14, tzinfo=PT),
+            dt.datetime(2026, 11, 24, 18, tzinfo=PT),
+        ),
+        last_event=Event(
+            "Out For Delivery Today",
+            "Anytown, ST",
+            dt.datetime(2026, 11, 24, 8, 2, tzinfo=PT),
+        ),
+        checked=dt.datetime(2026, 11, 24, 8, 15, tzinfo=PT),
+        next_poll=dt.datetime(2026, 11, 24, 8, 35, tzinfo=PT),
+        failures=1,
+    )
+    return package
+
+
+def test_poll_state_round_trip() -> None:
+    """Poll state is stored under tracking.poll and read back intact."""
+    package = _polled()
+    encoded = _encode_package(package)
+    assert encoded["tracking"]["poll"]["status"] == "out_for_delivery"
+    decoded = _decode_package(encoded)
+    assert decoded is not None
+    assert decoded.poll == package.poll
+
+    package.poll = PollState(
+        status=Status.DELIVERED,
+        eta=Eta(dt.date(2026, 11, 24), dt.date(2026, 11, 26)),
+        delivered_at=dt.datetime(2026, 11, 24, 15, 10, tzinfo=PT),
+        delivered_location="Front Door",
+        problem="Something",
+    )
+    decoded = _decode_package(_encode_package(package))
+    assert decoded is not None
+    assert decoded.poll == package.poll
+
+
+def test_poll_state_keeps_unknown_keys_and_tolerates_junk() -> None:
+    """Unknown poll keys survive; junk values fall back to defaults."""
+    raw_poll = {
+        "carrier": "dhl",
+        "status": "lost_in_space",
+        "eta": {"start": "2026-11-24"},
+        "last_event": {"text": ""},
+        "failures": "many",
+        "checked": "2026-11-24",
+        "future_key": [1, 2],
+    }
+    tracking = {"number": UPS, "carriers": ["ups"], "poll": raw_poll}
+    package = _decode_package({"uid": "a", "summary": UPS, "tracking": tracking})
+    assert package is not None
+    assert package.poll == PollState()
+
+    package.poll.failures = 1
+    assert _encode_package(package)["tracking"]["poll"]["future_key"] == [1, 2]
+
+
+def test_status_block_after_polls(hass: Any) -> None:
+    """The status block shows status, window, last scan and check time.
+
+    The ``hass`` fixture sets HA's time zone to US/Pacific.
+    """
+    assert _polled().status_lines() == [
+        f"UPS {UPS}",
+        "Status: Out for delivery",
+        "Expected Nov 24, 2-6 pm",
+        "Last scan: Out For Delivery Today, Anytown, ST, Nov 24, 8:02 am",
+        "Checked Nov 24, 8:15 am",
+    ]
+
+    package = _polled()
+    package.poll.status = Status.DELIVERED
+    package.poll.delivered_at = dt.datetime(2026, 11, 24, 15, 10, tzinfo=PT)
+    package.poll.delivered_location = "Front Door"
+    package.poll.problem = "A problem line"
+    assert package.status_lines()[1:4] == [
+        "Status: Delivered",
+        "Delivered Nov 24, 3:10 pm, Front Door",
+        "Last scan: Out For Delivery Today, Anytown, ST, Nov 24, 8:02 am",
+    ]
+    assert package.status_lines()[4] == "A problem line"
+
+    # A problem before any answer replaces "not checked yet".
+    package = _package()
+    package.poll.problem = "UPS isn't set up in Porchcast."
+    assert package.status_lines() == [f"UPS {UPS}", "UPS isn't set up in Porchcast."]
+
+
+def test_answering_carrier_replaces_candidates() -> None:
+    """Once a carrier answers for an ambiguous number, only it is named."""
+    package = Package(
+        uid="x",
+        summary="Shoes",
+        tracking=TrackingNumber(
+            "9400100000000000000006", (Carrier.USPS, Carrier.FEDEX)
+        ),
+    )
+    package.poll.carrier = Carrier.USPS
+    assert package.carriers == (Carrier.USPS,)
+    assert package.status_lines()[0] == "USPS 9400100000000000000006"

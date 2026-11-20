@@ -1,0 +1,82 @@
+{
+  "trackResponse": {
+    "shipment": [
+      {
+        "inquiryNumber": "1Z999AA10123456784",
+        "package": [
+          {
+            "trackingNumber": "1Z999AA10123456784",
+            "currentStatus": {
+              "type": "I",
+              "code": "DP",
+              "description": "Departed from Facility",
+              "simplifiedTextDescription": "On the Way"
+            },
+            "activity": [
+              {
+                "date": "20261121",
+                "time": "040500",
+                "gmtDate": "20261121",
+                "gmtOffset": "-05:00",
+                "gmtTime": "040500",
+                "location": {
+                  "address": {
+                    "city": "LOUISVILLE",
+                    "stateProvince": "KY",
+                    "countryCode": "US",
+                    "country": "US"
+                  },
+                  "slic": "0000"
+                },
+                "status": {
+                  "type": "I",
+                  "code": "DP",
+                  "description": "Departed from Facility",
+                  "statusCode": "005"
+                }
+              },
+              {
+                "date": "20261120",
+                "time": "221000",
+                "gmtDate": "20261120",
+                "gmtOffset": "-05:00",
+                "gmtTime": "221000",
+                "location": {
+                  "address": {
+                    "city": "LOUISVILLE",
+                    "stateProvince": "KY",
+                    "countryCode": "US",
+                    "country": "US"
+                  },
+                  "slic": "0000"
+                },
+                "status": {
+                  "type": "I",
+                  "code": "AR",
+                  "description": "Arrived at Facility",
+                  "statusCode": "005"
+                }
+              }
+            ],
+            "deliveryDate": [
+              {
+                "type": "SDD",
+                "date": "20261124"
+              }
+            ],
+            "deliveryTime": {
+              "type": "EOD",
+              "endTime": "235900"
+            },
+            "service": {
+              "code": "003",
+              "levelCode": "003",
+              "description": "UPS Ground"
+            },
+            "packageCount": 1
+          }
+        ]
+      }
+    ]
+  }
+}
