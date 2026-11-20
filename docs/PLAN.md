@@ -78,7 +78,11 @@ PR whose body says what the owner must do in real HA.
 - **Migration approach**: schema changes add keys and bump the minor version.
   HA's `Store` passes a different minor version through unchanged, and
   loading ignores unknown keys but keeps them on save (per item and at the top
-  level), so a rollback reads newer data and a later upgrade loses nothing. A
+  level), so a rollback reads newer data and a later upgrade loses nothing. The stored
+  `tracking` object is written back exactly as loaded until an edit changes
+  that item's tracking (number, carriers or override); then it is replaced
+  for good. Session 3's poll bookkeeping goes inside `tracking`, so it resets
+  when the number changes. A
   change that can't be additive bumps the major version and adds a step to
   `_PackageStore._async_migrate_func`.
 - **Separator survival** (mobile app edits): the separator matches any run of
