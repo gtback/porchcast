@@ -8,7 +8,7 @@ merged; each session builds on `main`.
 
 | # | Session | Version | Status |
 | --- | --- | --- | --- |
-| 1 | Scaffold and pipeline | 0.1.0 | Released 2026-11-19 (PR #1); waiting on Marketplace install |
+| 1 | Scaffold and pipeline | 0.1.0 | Done 2026-11-20 (PR #1; installed via Marketplace) |
 | 2 | Items and storage | 0.2.0 | Not started |
 | 3 | UPS end to end | 0.3.0 | Not started |
 | 4 | FedEx | 0.4.0 | Not started |
@@ -23,7 +23,7 @@ PR whose body says what the owner must do in real HA.
 - [x] `main` has the scaffold; CI green (lint, tests, version check, hassfest, HACS validation).
 - [x] Repo settings: description, topics, issues enabled; default branch `main`.
 - [x] `release.yml` published v0.1.0.
-- [ ] Owner installed 0.1.0 through the Marketplace and sees an empty "Porchcast Packages" list.
+- [x] Owner installed 0.1.0 through the Marketplace and sees an empty "Porchcast Packages" list.
 
 ## Decisions
 
