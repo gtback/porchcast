@@ -9,7 +9,7 @@ merged; each session builds on `main`.
 | # | Session | Version | Status |
 | --- | --- | --- | --- |
 | 1 | Scaffold and pipeline | 0.1.0 | Done 2026-11-20 (PR #1; installed via Marketplace) |
-| 2 | Items and storage | 0.2.0 | PR #2 open |
+| 2 | Items and storage | 0.2.0 | Merged 2026-11-20 (PR #2); owner check in real HA pending |
 | 3 | UPS end to end | 0.3.0 | Not started |
 | 4 | FedEx | 0.4.0 | Not started |
 | 5 | USPS | 0.5.0 | Not started |
