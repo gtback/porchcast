@@ -140,7 +140,7 @@ def test_unknown_tracking_data_survives_until_number_changes() -> None:
     assert package is not None
     assert _encode_package(package)["tracking"] == tracking
 
-    package.tracking = TrackingNumber("123456789012", (Carrier.FEDEX,))
+    package.set_tracking(TrackingNumber("123456789012", (Carrier.FEDEX,)))
     assert _encode_package(package)["tracking"] == {
         "number": "123456789012",
         "carriers": ["fedex"],
@@ -148,15 +148,37 @@ def test_unknown_tracking_data_survives_until_number_changes() -> None:
     }
 
 
-def test_unknown_only_carriers_survive_an_edit() -> None:
-    """Data a newer version wrote for a carrier we don't know isn't lost."""
+def test_unknown_only_carriers_survive_until_edited() -> None:
+    """Data for a carrier this version doesn't know is kept until the item changes."""
     tracking = {"number": UPS, "carriers": ["dhl"], "poll": {"failures": 1}}
     package = _decode_package({"uid": "a", "summary": UPS, "tracking": tracking})
     assert package is not None
     assert package.tracking is None
-    # An edit re-reads the number from the text.
-    package.tracking = TrackingNumber(UPS, (Carrier.UPS,))
     assert _encode_package(package)["tracking"] == tracking
+
+    package.set_tracking(TrackingNumber(UPS, (Carrier.UPS,)))
+    assert _encode_package(package)["tracking"] == {
+        "number": UPS,
+        "carriers": ["ups"],
+        "forced": False,
+    }
+
+
+def test_changed_tracking_never_restores_old_data() -> None:
+    """A -> B -> A writes fresh data; a changed override is saved."""
+    tracking = {"number": UPS, "carriers": ["ups"], "forced": True, "poll": {}}
+    package = _decode_package({"uid": "a", "summary": UPS, "tracking": tracking})
+    assert package is not None
+    ups = TrackingNumber(UPS, (Carrier.UPS,), forced=True)
+    package.set_tracking(ups)  # unchanged: kept
+    assert _encode_package(package)["tracking"] == tracking
+
+    package.set_tracking(TrackingNumber("123456789012", (Carrier.FEDEX,)))
+    package.set_tracking(ups)
+    assert "poll" not in _encode_package(package)["tracking"]
+
+    package.set_tracking(TrackingNumber(UPS, (Carrier.FEDEX,), forced=True))
+    assert _encode_package(package)["tracking"]["carriers"] == ["fedex"]
 
 
 def test_notes_keep_indentation() -> None:

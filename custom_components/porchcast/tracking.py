@@ -179,7 +179,12 @@ def find_tracking_number(text: str | None) -> TrackingNumber | None:
             return forced
         if first is None:
             continue
-        # Prefer the longest run of short groups that passes a check digit.
+        # A valid number on its own wins over a longer run that includes it.
+        carriers, checked = classify(first)
+        if carriers and checked:
+            return TrackingNumber(_routing_free(first), carriers)
+        # Otherwise prefer the longest run of short groups that passes a check
+        # digit.
         joined = first
         best: TrackingNumber | None = None
         for token in tokens[start + 1 : start + _MAX_GROUPS]:

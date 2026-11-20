@@ -62,6 +62,12 @@ class Package:
     # The stored ``tracking`` object as loaded, for the same reason.
     tracking_raw: dict[str, Any] | None = field(default=None, compare=False)
 
+    def set_tracking(self, tracking: TrackingNumber | None) -> None:
+        """Set the tracking number; a change discards the stored object."""
+        if tracking != self.tracking:
+            self.tracking = tracking
+            self.tracking_raw = None
+
     def status_lines(self) -> list[str]:
         """Return the managed status block, one entry per line."""
         if self.tracking is None:
@@ -133,19 +139,13 @@ def _encode_tracking(tracking: TrackingNumber | None) -> dict[str, Any] | None:
 
 
 def _encode_tracking_keeping_raw(package: Package) -> dict[str, Any] | None:
-    """Write the stored tracking object back as loaded while the number holds.
+    """Write the tracking object back exactly as loaded, until an edit changes it.
 
     It may carry keys or carriers this version doesn't know.
     """
-    raw, tracking = package.tracking_raw, package.tracking
-    if (
-        raw is not None
-        and tracking is not None
-        and raw.get("number") == tracking.number
-        and bool(raw.get("forced")) == tracking.forced
-    ):
-        return raw
-    return _encode_tracking(tracking)
+    if package.tracking_raw is not None:
+        return package.tracking_raw
+    return _encode_tracking(package.tracking)
 
 
 def _decode_tracking(value: Any) -> TrackingNumber | None:
@@ -296,7 +296,7 @@ class PackageList:
         package.summary = item.summary or package.summary
         package.notes = notes_from_description(item.description, package)
         package.due = item.due
-        package.tracking = _tracking_for(package.summary, package.notes)
+        package.set_tracking(_tracking_for(package.summary, package.notes))
         self._set_status(package, item.status or package.status)
         await self.async_save()
         return package

@@ -175,6 +175,13 @@ def test_unchecked_format_as_one_token() -> None:
     )
 
 
+def test_standalone_number_is_not_extended() -> None:
+    """Groups after a valid number aren't glued onto it."""
+    assert find_tracking_number(f"{FEDEX12} 0000 0000") == TrackingNumber(
+        FEDEX12, (Carrier.FEDEX,)
+    )
+
+
 def test_first_number_wins_over_later_prefix() -> None:
     """A forced number later in the text doesn't beat an earlier number."""
     assert find_tracking_number(f"{FEDEX12} then ups:{UPS}") == TrackingNumber(
