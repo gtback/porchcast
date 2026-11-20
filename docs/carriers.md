@@ -33,5 +33,10 @@ them against real numbers with `live_check.py` once each carrier's API is in.
   characters (up to 8 groups). A joined number must pass a check digit, so an
   unchecked format is matched only as a single token. Tokens containing `/`,
   `@` or `=`, or starting with `www.`, are skipped (URLs, emails).
+- **Hyphens** count as group separators: a hyphenated token must pass a
+  check digit too.
+- **Prefixes** are read in text order with the other numbers (so the first
+  number still wins). The number may follow the colon directly or after one
+  space. A prefix inside a URL is ignored.
 - **Where the number is found**: the summary first, then the notes. The first
   number wins.
