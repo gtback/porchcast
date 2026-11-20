@@ -153,6 +153,8 @@ def test_prefix_forces_carrier(text: str, expected: TrackingNumber) -> None:
         "Call 555 123 4567 about the couch",
         "Typo 1Z999AA10123456785",
         "Mixed 1Z 999 AA1 01 2345 6785",
+        "\u00b2" * 12,  # superscript digits: isdigit() but not int()
+        "\u0661" * 12,  # Arabic-Indic digits
     ],
 )
 def test_no_number(text: str | None) -> None:

@@ -98,7 +98,8 @@ def classify(number: str) -> tuple[tuple[Carrier, ...], bool]:
     if re.fullmatch(r"[A-Z]{2}\d{9}[A-Z]{2}", number):
         ok = s10_check_digit_ok(number)
         return ((Carrier.USPS,), True) if ok else ((), False)
-    if not number.isdigit():
+    # isdigit() alone accepts superscripts and other Unicode digits.
+    if not (number.isascii() and number.isdigit()):
         return (), False
 
     number = _strip_usps_routing(number)
@@ -136,7 +137,7 @@ def _clean(token: str) -> str | None:
     if _is_url(token):
         return None
     token = token.strip(_PUNCTUATION).replace("-", "").upper()
-    return token if token and token.isalnum() else None
+    return token if token and token.isascii() and token.isalnum() else None
 
 
 def _forced(token: str, following: str | None) -> TrackingNumber | None:
@@ -160,7 +161,9 @@ def _forced(token: str, following: str | None) -> TrackingNumber | None:
 
 def _routing_free(number: str) -> str:
     """Return the number as stored: the IMpb part of a ``420`` ZIP barcode."""
-    return _strip_usps_routing(number) if number.isdigit() else number
+    return (
+        _strip_usps_routing(number) if number.isascii() and number.isdigit() else number
+    )
 
 
 def find_tracking_number(text: str | None) -> TrackingNumber | None:

@@ -146,3 +146,22 @@ def test_unknown_tracking_data_survives_until_number_changes() -> None:
         "carriers": ["fedex"],
         "forced": False,
     }
+
+
+def test_unknown_only_carriers_survive_an_edit() -> None:
+    """Data a newer version wrote for a carrier we don't know isn't lost."""
+    tracking = {"number": UPS, "carriers": ["dhl"], "poll": {"failures": 1}}
+    package = _decode_package({"uid": "a", "summary": UPS, "tracking": tracking})
+    assert package is not None
+    assert package.tracking is None
+    # An edit re-reads the number from the text.
+    package.tracking = TrackingNumber(UPS, (Carrier.UPS,))
+    assert _encode_package(package)["tracking"] == tracking
+
+
+def test_notes_keep_indentation() -> None:
+    """Leading indentation in the notes is kept; trailing space isn't."""
+    text = f"  indented note\n  - item  \n\n{SEPARATOR}\nUPS {UPS}"
+    assert notes_from_description(text, None) == "  indented note\n  - item"
+    package = _package("  indented note")
+    assert notes_from_description(package.description(), package) == ("  indented note")

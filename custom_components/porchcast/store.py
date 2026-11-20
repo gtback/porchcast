@@ -104,7 +104,10 @@ def notes_from_description(
         block = "\n".join(package.status_lines())
         if text.rstrip().endswith(block):
             text = text.rstrip()[: -len(block)]
-    return text.strip() or None
+    # Keep the first line's indentation; drop blank lines around the notes and
+    # the trailing space the rendered layout adds.
+    text = text.rstrip().lstrip("\n")
+    return text if text.strip() else None
 
 
 def _encode_due(value: dt.date | dt.datetime | None) -> str | None:
@@ -127,6 +130,22 @@ def _encode_tracking(tracking: TrackingNumber | None) -> dict[str, Any] | None:
         "carriers": [str(c) for c in tracking.carriers],
         "forced": tracking.forced,
     }
+
+
+def _encode_tracking_keeping_raw(package: Package) -> dict[str, Any] | None:
+    """Write the stored tracking object back as loaded while the number holds.
+
+    It may carry keys or carriers this version doesn't know.
+    """
+    raw, tracking = package.tracking_raw, package.tracking
+    if (
+        raw is not None
+        and tracking is not None
+        and raw.get("number") == tracking.number
+        and bool(raw.get("forced")) == tracking.forced
+    ):
+        return raw
+    return _encode_tracking(tracking)
 
 
 def _decode_tracking(value: Any) -> TrackingNumber | None:
@@ -154,12 +173,7 @@ def _encode_package(package: Package) -> dict[str, Any]:
         "status": str(package.status),
         "due": _encode_due(package.due),
         "completed": _encode_due(package.completed),
-        "tracking": (
-            package.tracking_raw
-            if package.tracking_raw is not None
-            and _decode_tracking(package.tracking_raw) == package.tracking
-            else _encode_tracking(package.tracking)
-        ),
+        "tracking": _encode_tracking_keeping_raw(package),
     }
 
 
