@@ -1,0 +1,64 @@
+{
+  "trackResponse": {
+    "shipment": [
+      {
+        "inquiryNumber": "1Z999AA10123456784",
+        "package": [
+          {
+            "trackingNumber": "1Z999AA10123456784",
+            "currentStatus": {
+              "type": "D",
+              "code": "FS",
+              "description": "DELIVERED",
+              "simplifiedTextDescription": "Delivered"
+            },
+            "activity": [
+              {
+                "date": "20261124",
+                "time": "151000",
+                "gmtDate": "20261124",
+                "gmtOffset": "-05:00",
+                "gmtTime": "151000",
+                "location": {
+                  "address": {
+                    "city": "ANYTOWN",
+                    "stateProvince": "ST",
+                    "countryCode": "US",
+                    "country": "US"
+                  },
+                  "slic": "0000"
+                },
+                "status": {
+                  "type": "D",
+                  "code": "FS",
+                  "description": "DELIVERED",
+                  "statusCode": "005"
+                }
+              }
+            ],
+            "deliveryDate": [
+              {
+                "type": "DEL",
+                "date": "20261124"
+              }
+            ],
+            "deliveryTime": {
+              "type": "DEL",
+              "endTime": "151000"
+            },
+            "deliveryInformation": {
+              "location": "Front Door",
+              "receivedBy": ""
+            },
+            "service": {
+              "code": "003",
+              "levelCode": "003",
+              "description": "UPS Ground"
+            },
+            "packageCount": 1
+          }
+        ]
+      }
+    ]
+  }
+}

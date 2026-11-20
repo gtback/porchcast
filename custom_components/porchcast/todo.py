@@ -7,13 +7,16 @@ from homeassistant.components.todo import (
     TodoListEntity,
     TodoListEntityFeature,
 )
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
+from homeassistant.helpers.update_coordinator import CoordinatorEntity
+from homeassistant.util import dt as dt_util
 
 from . import PorchcastConfigEntry
 from .const import DOMAIN, NAME, TODO_LIST_NAME
-from .store import PackageList
+from .coordinator import PorchcastCoordinator
+from .store import Package, PackageList
 
 
 async def async_setup_entry(
@@ -25,11 +28,10 @@ async def async_setup_entry(
     async_add_entities([PackagesTodoListEntity(entry)])
 
 
-class PackagesTodoListEntity(TodoListEntity):
+class PackagesTodoListEntity(CoordinatorEntity[PorchcastCoordinator], TodoListEntity):
     """The Packages to-do list. Items are packages being tracked."""
 
     _attr_has_entity_name = True
-    _attr_should_poll = False
     _attr_supported_features = (
         TodoListEntityFeature.CREATE_TODO_ITEM
         | TodoListEntityFeature.UPDATE_TODO_ITEM
@@ -42,7 +44,8 @@ class PackagesTodoListEntity(TodoListEntity):
 
     def __init__(self, entry: PorchcastConfigEntry) -> None:
         """Initialize the entity."""
-        self._packages: PackageList = entry.runtime_data
+        super().__init__(entry.runtime_data.coordinator)
+        self._packages: PackageList = entry.runtime_data.packages
         self._attr_unique_id = f"{entry.entry_id}_packages"
         self._attr_name = TODO_LIST_NAME
         self._attr_device_info = DeviceInfo(
@@ -59,17 +62,38 @@ class PackagesTodoListEntity(TodoListEntity):
         self._refresh_items()
         self.async_write_ha_state()
 
+    @callback
+    @override
+    def _handle_coordinator_update(self) -> None:
+        """A poll changed the packages."""
+        self._async_changed()
+
+    @callback
+    def _async_poll_if_due(self, package: Package) -> None:
+        """Check a new or re-numbered package now, not at the next tick.
+
+        The poll runs in a task, so adding an item doesn't wait on the carrier.
+        """
+        if self.coordinator.is_due(package, dt_util.utcnow()):
+            self.coordinator.config_entry.async_create_task(
+                self.hass,
+                self.coordinator.async_request_refresh(),
+                "porchcast poll new number",
+            )
+
     @override
     async def async_create_todo_item(self, item: TodoItem) -> None:
         """Add a package."""
-        await self._packages.async_create(item)
+        package = await self._packages.async_create(item)
         self._async_changed()
+        self._async_poll_if_due(package)
 
     @override
     async def async_update_todo_item(self, item: TodoItem) -> None:
         """Edit a package's text, notes, due date or completion."""
-        await self._packages.async_update(item)
+        package = await self._packages.async_update(item)
         self._async_changed()
+        self._async_poll_if_due(package)
 
     @override
     async def async_delete_todo_items(self, uids: list[str]) -> None:

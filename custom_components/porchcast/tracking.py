@@ -24,7 +24,7 @@ unrelated numbers next to each other aren't glued together. URLs are skipped.
 from dataclasses import dataclass
 import re
 
-from .const import Carrier
+from .carriers.base import Carrier
 
 _FORCED_RE = re.compile(r"(ups|fedex|usps):(.*)", re.IGNORECASE)
 # The forced number must contain a digit, so "USPS: tracking ..." isn't one.

@@ -2,11 +2,68 @@
   "config": {
     "step": {
       "user": {
-        "description": "Set up Porchcast to track packages on a to-do list."
+        "description": "Enter API credentials for the carriers you use. Each carrier is optional, but at least one is needed.",
+        "sections": {
+          "ups": {
+            "name": "UPS",
+            "description": "From your app on the UPS Developer Portal (developer.ups.com). Leave blank to skip UPS.",
+            "data": {
+              "client_id": "Client ID",
+              "client_secret": "Client secret",
+              "sandbox": "Use the UPS test environment (CIE)"
+            },
+            "data_description": {
+              "sandbox": "Only for development; the test environment returns sample data."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "description": "Change carrier API credentials. Clear a carrier's fields to stop tracking with it.",
+        "sections": {
+          "ups": {
+            "name": "UPS",
+            "description": "From your app on the UPS Developer Portal (developer.ups.com). Leave blank to skip UPS.",
+            "data": {
+              "client_id": "Client ID",
+              "client_secret": "Client secret",
+              "sandbox": "Use the UPS test environment (CIE)"
+            },
+            "data_description": {
+              "sandbox": "Only for development; the test environment returns sample data."
+            }
+          }
+        }
+      },
+      "reauth_confirm": {
+        "description": "A carrier rejected Porchcast's credentials. Enter new ones.",
+        "sections": {
+          "ups": {
+            "name": "UPS",
+            "description": "From your app on the UPS Developer Portal (developer.ups.com). Leave blank to skip UPS.",
+            "data": {
+              "client_id": "Client ID",
+              "client_secret": "Client secret",
+              "sandbox": "Use the UPS test environment (CIE)"
+            },
+            "data_description": {
+              "sandbox": "Only for development; the test environment returns sample data."
+            }
+          }
+        },
+        "title": "Carrier sign-in failed"
       }
     },
+    "error": {
+      "no_carrier": "Enter credentials for at least one carrier.",
+      "incomplete": "{carrier} needs both a client ID and a client secret.",
+      "invalid_auth": "{carrier} rejected these credentials.",
+      "cannot_connect": "Couldn't reach {carrier} to check the credentials. Try again later."
+    },
     "abort": {
-      "single_instance_allowed": "Porchcast is already set up."
+      "single_instance_allowed": "Porchcast is already set up.",
+      "reconfigure_successful": "Credentials updated.",
+      "reauth_successful": "Credentials updated."
     }
   }
 }

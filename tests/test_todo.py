@@ -10,11 +10,14 @@ from homeassistant.exceptions import HomeAssistantError
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.porchcast.const import DOMAIN, NAME
+from custom_components.porchcast.const import DOMAIN, NAME, Carrier
+from custom_components.porchcast.coordinator import not_set_up_line
 from custom_components.porchcast.store import NO_NUMBER_LINE, SEPARATOR
 
 ENTITY_ID = "todo.porchcast_packages"
 UPS = "1Z999AA10123456784"
+# These entries have no credentials, so the first poll says UPS isn't set up.
+NOT_SET_UP = not_set_up_line((Carrier.UPS,))
 
 
 @pytest.fixture
@@ -75,7 +78,7 @@ async def test_add_item_finds_tracking_number(
     assert item["summary"] == f"Bike rack, REI {UPS}"
     assert item["status"] == TodoItemStatus.NEEDS_ACTION
     assert item["description"] == (
-        f"Roof rack, order 42\n\n{SEPARATOR}\nUPS {UPS}\nStatus: not checked yet"
+        f"Roof rack, order 42\n\n{SEPARATOR}\nUPS {UPS}\n{NOT_SET_UP}"
     )
     assert hass.states.get(ENTITY_ID).state == "1"  # type: ignore[union-attr]
 
@@ -107,9 +110,7 @@ async def test_editing_keeps_notes_and_status(
     edited = item["description"].replace("old notes", "new notes")
     await _call(hass, "update_item", item=item["uid"], description=edited)
     [item] = await _items(hass)
-    assert item["description"] == (
-        f"new notes\n\n{SEPARATOR}\nUPS {UPS}\nStatus: not checked yet"
-    )
+    assert item["description"] == (f"new notes\n\n{SEPARATOR}\nUPS {UPS}\n{NOT_SET_UP}")
 
     # Renaming alone keeps the notes.
     await _call(hass, "update_item", item=item["uid"], rename=f"Roof rack {UPS}")
@@ -120,7 +121,7 @@ async def test_editing_keeps_notes_and_status(
     # Clearing the description clears the notes, not the status block.
     await _call(hass, "update_item", item=item["uid"], description=None)
     [item] = await _items(hass)
-    assert item["description"] == f"{SEPARATOR}\nUPS {UPS}\nStatus: not checked yet"
+    assert item["description"] == f"{SEPARATOR}\nUPS {UPS}\n{NOT_SET_UP}"
 
 
 async def test_rename_changes_tracking_number(
@@ -188,7 +189,7 @@ async def test_move(hass: HomeAssistant, entry: MockConfigEntry) -> None:
     for name in ("A", "B", "C"):
         await _call(hass, "add_item", item=name)
     uids = {i["summary"]: i["uid"] for i in await _items(hass)}
-    packages = entry.runtime_data
+    packages = entry.runtime_data.packages
 
     await packages.async_move(uids["C"], None)
     await packages.async_move(uids["A"], uids["B"])
@@ -264,7 +265,10 @@ async def test_loads_newer_minor_version(
     assert data["future"] is True
     assert data["items"][0]["poll"] == {"failures": 2}
     assert data["items"][0]["tracking"]["carriers"] == ["ups", "dhl"]
-    assert data["items"][0]["tracking"]["poll"] == {"next": "2026-11-24T10:00:00+00:00"}
+    # The first poll wrote its own keys next to the unknown one.
+    poll = data["items"][0]["tracking"]["poll"]
+    assert poll["next"] == "2026-11-24T10:00:00+00:00"
+    assert poll["problem"] == NOT_SET_UP
 
 
 async def test_remove_entry_deletes_storage(
@@ -283,6 +287,6 @@ async def test_due_datetime_is_aware(
 ) -> None:
     """Datetimes are stored with their time zone."""
     await _call(hass, "add_item", item="Desk", due_datetime="2026-11-24 09:00:00")
-    [package] = entry.runtime_data
+    [package] = entry.runtime_data.packages
     assert isinstance(package.due, dt.datetime)
     assert package.due.tzinfo is not None

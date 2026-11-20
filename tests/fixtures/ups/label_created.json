@@ -1,0 +1,50 @@
+{
+  "trackResponse": {
+    "shipment": [
+      {
+        "inquiryNumber": "1Z999AA10123456784",
+        "package": [
+          {
+            "trackingNumber": "1Z999AA10123456784",
+            "currentStatus": {
+              "type": "M",
+              "code": "MP",
+              "description": "Shipper created a label, UPS has not received the package yet.",
+              "simplifiedTextDescription": "Label Created"
+            },
+            "activity": [
+              {
+                "date": "20261120",
+                "time": "183000",
+                "gmtDate": "20261120",
+                "gmtOffset": "",
+                "gmtTime": "183000",
+                "location": {
+                  "address": {
+                    "city": "",
+                    "stateProvince": "",
+                    "countryCode": "US",
+                    "country": "US"
+                  },
+                  "slic": "0000"
+                },
+                "status": {
+                  "type": "M",
+                  "code": "MP",
+                  "description": "Shipper created a label, UPS has not received the package yet.",
+                  "statusCode": "005"
+                }
+              }
+            ],
+            "service": {
+              "code": "003",
+              "levelCode": "003",
+              "description": "UPS Ground"
+            },
+            "packageCount": 1
+          }
+        ]
+      }
+    ]
+  }
+}

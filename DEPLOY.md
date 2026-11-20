@@ -27,7 +27,7 @@ Checked on 2026-11-19 against the HA 2026.11 release notes
 ## First install (once)
 
 1. Create carrier developer accounts and apps; keep sandbox and production
-   keys apart. (Needed from 0.3.0, when UPS tracking lands.)
+   keys apart. See "Carrier credentials" below.
 2. Settings → Marketplace → accept the community-content notice (first time
    only).
 3. Settings → Marketplace → ⋮ → **Add from link** → `gtback/porchcast`. Connect
@@ -36,8 +36,39 @@ Checked on 2026-11-19 against the HA 2026.11 release notes
 4. Open Porchcast in the list → **Install**. Restart HA if it asks (the first
    install on 2026-11-20 needed one), then Settings → Devices & services →
    Add integration → Porchcast.
-5. Confirm the setup. A "Porchcast Packages" to-do list appears.
+5. Enter the carrier credentials (UPS from 0.3.0). A "Porchcast Packages"
+   to-do list appears.
 6. Add the to-do list to a dashboard.
+
+## Carrier credentials
+
+Porchcast checks each set of credentials by fetching a token when you save
+them. To change them later, or to add them to an entry made by 0.1.0 or 0.2.0
+(which had none): Settings → Devices & services → Porchcast → ⋮ →
+**Reconfigure**. Don't remove and re-add the integration: removing it deletes
+the stored packages.
+
+If a carrier later rejects the credentials, HA shows a "Reauthentication
+required" notice for Porchcast, and the items say "sign-in failed". Polling
+for that carrier stops until you enter new credentials.
+
+### UPS
+
+1. Sign in at developer.ups.com with a ups.com account and create an app.
+   (Porchcast's token request doesn't send a UPS account number; the spec
+   makes it optional.)
+2. Make sure the app includes the **Tracking** API.
+3. Copy the app's **Client ID** and **Client Secret** into Porchcast.
+
+"Use the UPS test environment (CIE)" is for `scripts/develop` only: CIE
+returns canned data, not your packages.
+
+### Trying a number from your machine
+
+`scripts/live_check.py <number>` looks a number up with the real API, using
+credentials from `.env` (`UPS_CLIENT_ID`, `UPS_CLIENT_SECRET`). `--save NAME`
+writes the response, scrubbed of numbers, names and addresses, as a test
+fixture. Never run it in a cloud session.
 
 ## Updates
 

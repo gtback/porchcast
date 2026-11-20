@@ -24,13 +24,16 @@ from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.storage import Store
 from homeassistant.util import dt as dt_util, ulid as ulid_util
 
+from . import render
+from .carriers.base import Eta, Event, Status
 from .const import CARRIER_NAMES, DOMAIN, Carrier
 from .tracking import TrackingNumber, find_tracking_number
 
 _LOGGER = logging.getLogger(__name__)
 
 STORAGE_VERSION = 1
-STORAGE_MINOR_VERSION = 1
+# 1.2 (0.3.0): poll state under tracking.poll.
+STORAGE_MINOR_VERSION = 2
 
 SEPARATOR = "--- tracking ---"
 # Accept the separator however a phone keyboard or editor may have mangled it:
@@ -44,6 +47,71 @@ _SEPARATOR_RE = re.compile(
 NO_NUMBER_LINE = "No tracking number found."
 NOT_CHECKED_LINE = "Status: not checked yet"
 
+STATUS_LABELS: dict[Status, str] = {
+    Status.PRE_TRANSIT: "Label created",
+    Status.IN_TRANSIT: "In transit",
+    Status.OUT_FOR_DELIVERY: "Out for delivery",
+    Status.DELIVERED: "Delivered",
+    Status.EXCEPTION: "Exception",
+    Status.UNKNOWN: "Unknown",
+}
+
+
+@dataclass(slots=True)
+class PollState:
+    """What the integration last learned about a package, and when to ask again.
+
+    It resets whenever the tracking number changes.
+    """
+
+    # The carrier that answered, once one has (an ambiguous number lists
+    # several).
+    carrier: Carrier | None = None
+    status: Status | None = None
+    description: str | None = None
+    eta: Eta | None = None
+    last_event: Event | None = None
+    delivered_at: dt.datetime | None = None
+    delivered_location: str | None = None
+    # Last time a carrier answered.
+    checked: dt.datetime | None = None
+    # None: as soon as possible.
+    next_poll: dt.datetime | None = None
+    failures: int = 0
+    # A line explaining why the status may be stale, e.g. repeated errors.
+    problem: str | None = None
+
+    def lines(self, tracking: TrackingNumber) -> list[str]:
+        """Render the status block below the number line."""
+        lines: list[str] = []
+        if self.status is None:
+            if self.problem is None:
+                lines.append(NOT_CHECKED_LINE)
+        else:
+            label = STATUS_LABELS[self.status]
+            lines.append(f"Status: {label}")
+        if self.status is Status.DELIVERED:
+            if self.delivered_at is not None or self.delivered_location:
+                parts = [
+                    render.when(self.delivered_at) if self.delivered_at else None,
+                    self.delivered_location,
+                ]
+                lines.append("Delivered " + ", ".join(p for p in parts if p))
+        elif self.eta is not None:
+            lines.append(f"Expected {render.eta(self.eta)}")
+        if (event := self.last_event) is not None:
+            parts = [
+                event.text,
+                event.location,
+                render.when(event.time) if event.time else None,
+            ]
+            lines.append("Last scan: " + ", ".join(p for p in parts if p))
+        if self.problem:
+            lines.append(self.problem)
+        if self.checked is not None:
+            lines.append(f"Checked {render.when(self.checked)}")
+        return lines
+
 
 @dataclass(slots=True)
 class Package:
@@ -56,6 +124,7 @@ class Package:
     due: dt.date | dt.datetime | None = None
     completed: dt.datetime | None = None
     tracking: TrackingNumber | None = None
+    poll: PollState = field(default_factory=PollState)
     # Stored keys this version doesn't know (written by a newer version), kept
     # so a rollback followed by an upgrade loses nothing.
     extra: dict[str, Any] = field(default_factory=dict, compare=False)
@@ -67,13 +136,23 @@ class Package:
         if tracking != self.tracking:
             self.tracking = tracking
             self.tracking_raw = None
+            self.poll = PollState()
+
+    @property
+    def carriers(self) -> tuple[Carrier, ...]:
+        """The carriers to ask: the one that answered, else every candidate."""
+        if self.tracking is None:
+            return ()
+        if self.poll.carrier is not None:
+            return (self.poll.carrier,)
+        return self.tracking.carriers
 
     def status_lines(self) -> list[str]:
         """Return the managed status block, one entry per line."""
         if self.tracking is None:
             return [NO_NUMBER_LINE]
-        names = " or ".join(CARRIER_NAMES[c] for c in self.tracking.carriers)
-        return [f"{names} {self.tracking.number}", NOT_CHECKED_LINE]
+        names = " or ".join(CARRIER_NAMES[c] for c in self.carriers)
+        return [f"{names} {self.tracking.number}", *self.poll.lines(self.tracking)]
 
     def description(self) -> str:
         """Render notes, the separator, then the status block."""
@@ -128,24 +207,107 @@ def _decode_due(value: Any) -> dt.date | dt.datetime | None:
     return dt_util.parse_date(value)
 
 
-def _encode_tracking(tracking: TrackingNumber | None) -> dict[str, Any] | None:
-    if tracking is None:
-        return None
+def _encode_datetime(value: dt.datetime | None) -> str | None:
+    return value.isoformat() if value is not None else None
+
+
+def _decode_datetime(value: Any) -> dt.datetime | None:
+    decoded = _decode_due(value)
+    return decoded if isinstance(decoded, dt.datetime) else None
+
+
+def _encode_poll(poll: PollState) -> dict[str, Any]:
+    eta = poll.eta
+    event = poll.last_event
     return {
-        "number": tracking.number,
-        "carriers": [str(c) for c in tracking.carriers],
-        "forced": tracking.forced,
+        "carrier": str(poll.carrier) if poll.carrier else None,
+        "status": str(poll.status) if poll.status else None,
+        "description": poll.description,
+        "eta": (
+            {"start": eta.start.isoformat(), "end": eta.end.isoformat()}
+            if eta
+            else None
+        ),
+        "last_event": (
+            {
+                "text": event.text,
+                "location": event.location,
+                "time": _encode_datetime(event.time),
+            }
+            if event
+            else None
+        ),
+        "delivered_at": _encode_datetime(poll.delivered_at),
+        "delivered_location": poll.delivered_location,
+        "checked": _encode_datetime(poll.checked),
+        "next_poll": _encode_datetime(poll.next_poll),
+        "failures": poll.failures,
+        "problem": poll.problem,
     }
 
 
-def _encode_tracking_keeping_raw(package: Package) -> dict[str, Any] | None:
-    """Write the tracking object back exactly as loaded, until an edit changes it.
+def _optional_str(value: Any) -> str | None:
+    return value if isinstance(value, str) and value else None
 
-    It may carry keys or carriers this version doesn't know.
+
+def _decode_poll(value: Any) -> PollState:
+    if not isinstance(value, dict):
+        return PollState()
+    eta: Eta | None = None
+    if isinstance(raw_eta := value.get("eta"), dict):
+        start, end = _decode_due(raw_eta.get("start")), _decode_due(raw_eta.get("end"))
+        if start is not None and end is not None:
+            eta = Eta(start, end)
+    event: Event | None = None
+    if isinstance(raw_event := value.get("last_event"), dict) and (
+        text := _optional_str(raw_event.get("text"))
+    ):
+        event = Event(
+            text=text,
+            location=_optional_str(raw_event.get("location")),
+            time=_decode_datetime(raw_event.get("time")),
+        )
+    carrier = value.get("carrier")
+    status = value.get("status")
+    failures = value.get("failures")
+    return PollState(
+        carrier=Carrier(carrier) if carrier in set(Carrier) else None,
+        status=Status(status) if status in set(Status) else None,
+        description=_optional_str(value.get("description")),
+        eta=eta,
+        last_event=event,
+        delivered_at=_decode_datetime(value.get("delivered_at")),
+        delivered_location=_optional_str(value.get("delivered_location")),
+        checked=_decode_datetime(value.get("checked")),
+        next_poll=_decode_datetime(value.get("next_poll")),
+        failures=failures if isinstance(failures, int) else 0,
+        problem=_optional_str(value.get("problem")),
+    )
+
+
+def _encode_tracking(package: Package) -> dict[str, Any] | None:
+    """Encode the number and its poll state.
+
+    Until an edit changes the number, the stored object is written back as
+    loaded (it may carry keys or carriers this version doesn't know), with
+    only the poll state updated.
     """
-    if package.tracking_raw is not None:
+    tracking = package.tracking
+    if tracking is None:
         return package.tracking_raw
-    return _encode_tracking(package.tracking)
+    raw = package.tracking_raw
+    if raw is None:
+        raw = {
+            "number": tracking.number,
+            "carriers": [str(c) for c in tracking.carriers],
+            "forced": tracking.forced,
+        }
+    if package.poll == PollState():
+        # Never polled: nothing to add (and nothing to overwrite).
+        return raw
+    raw_poll = raw.get("poll")
+    poll = raw_poll if isinstance(raw_poll, dict) else {}
+    return {**raw, "poll": {**poll, **_encode_poll(package.poll)}}
 
 
 def _decode_tracking(value: Any) -> TrackingNumber | None:
@@ -173,7 +335,7 @@ def _encode_package(package: Package) -> dict[str, Any]:
         "status": str(package.status),
         "due": _encode_due(package.due),
         "completed": _encode_due(package.completed),
-        "tracking": _encode_tracking_keeping_raw(package),
+        "tracking": _encode_tracking(package),
     }
 
 
@@ -196,6 +358,7 @@ def _decode_package(data: dict[str, Any]) -> Package | None:
         due=_decode_due(data.get("due")),
         completed=completed if isinstance(completed, dt.datetime) else None,
         tracking=_decode_tracking(tracking := data.get("tracking")),
+        poll=_decode_poll(tracking.get("poll") if isinstance(tracking, dict) else None),
         tracking_raw=tracking if isinstance(tracking, dict) else None,
         extra={k: v for k, v in data.items() if k not in _KNOWN_KEYS},
     )
@@ -238,6 +401,10 @@ class PackageList:
     def __iter__(self) -> Iterator[Package]:
         """Iterate over packages in list order."""
         return iter(self._packages)
+
+    def __contains__(self, package: object) -> bool:
+        """Whether ``package`` (the object, not a copy) is still on the list."""
+        return any(p is package for p in self._packages)
 
     def get(self, uid: str) -> Package:
         """Return one package, or raise if it's gone."""
@@ -327,6 +494,7 @@ class PackageList:
     @staticmethod
     def _set_status(package: Package, status: TodoItemStatus) -> None:
         """Set completion; a completed item records when it was checked off."""
+        status = TodoItemStatus(status)
         if status == package.status and (
             status != TodoItemStatus.COMPLETED or package.completed is not None
         ):

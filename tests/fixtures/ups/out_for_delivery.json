@@ -1,0 +1,61 @@
+{
+  "trackResponse": {
+    "shipment": [
+      {
+        "inquiryNumber": "1Z999AA10123456784",
+        "package": [
+          {
+            "trackingNumber": "1Z999AA10123456784",
+            "currentStatus": {
+              "type": "I",
+              "code": "OT",
+              "description": "Out For Delivery Today",
+              "simplifiedTextDescription": "Out for Delivery"
+            },
+            "activity": [
+              {
+                "date": "20261124",
+                "time": "080200",
+                "gmtDate": "20261124",
+                "gmtOffset": "-05:00",
+                "gmtTime": "080200",
+                "location": {
+                  "address": {
+                    "city": "ANYTOWN",
+                    "stateProvince": "ST",
+                    "countryCode": "US",
+                    "country": "US"
+                  },
+                  "slic": "0000"
+                },
+                "status": {
+                  "type": "I",
+                  "code": "OT",
+                  "description": "Out For Delivery Today",
+                  "statusCode": "005"
+                }
+              }
+            ],
+            "deliveryDate": [
+              {
+                "type": "SDD",
+                "date": "20261124"
+              }
+            ],
+            "deliveryTime": {
+              "type": "EDW",
+              "startTime": "140000",
+              "endTime": "180000"
+            },
+            "service": {
+              "code": "003",
+              "levelCode": "003",
+              "description": "UPS Ground"
+            },
+            "packageCount": 1
+          }
+        ]
+      }
+    ]
+  }
+}
