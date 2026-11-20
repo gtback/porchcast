@@ -45,6 +45,13 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101", "S105", "S106", "PLR2004", "INP001"]  # fake credentials in tests
 "scripts/**" = ["T201", "S603", "S607", "INP001"]
+"!custom_components/porchcast/{carriers/**,tracking.py}" = ["TID251"]
+
+# The carrier clients and number parsing stay free of Home Assistant, so they
+# could become a library later (and scripts/live_check.py runs them without
+# HA). TID251 bans HA everywhere, then is switched off outside those files.
+[tool.ruff.lint.flake8-tidy-imports.banned-api]
+"homeassistant".msg = "carriers/ and tracking.py must not import Home Assistant"
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true

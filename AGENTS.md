@@ -97,6 +97,11 @@ If the hook didn't run, run it by hand:
   developer docs, where reachable), not memory, and heed deprecation warnings in
   test output.
 - No network in tests. Every carrier test runs against recorded fixtures.
+- `carriers/` and `tracking.py` never import Home Assistant (ruff TID251
+  enforces it). Clients take an aiohttp session, time zone and clock as
+  arguments, so `scripts/live_check.py` can run them, and they could become a
+  separate library later. HA-specific code goes in the coordinator, store,
+  entity or config flow.
 - Never run `scripts/live_check.py` or `scripts/sideload` in a cloud session.
 - The repo is public. No credentials, real tracking numbers, names or addresses,
   including in fixtures and PR text.
