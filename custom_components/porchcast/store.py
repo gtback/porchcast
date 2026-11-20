@@ -56,7 +56,11 @@ class Package:
     due: dt.date | dt.datetime | None = None
     completed: dt.datetime | None = None
     tracking: TrackingNumber | None = None
-    extra: dict[str, Any] = field(default_factory=dict)
+    # Stored keys this version doesn't know (written by a newer version), kept
+    # so a rollback followed by an upgrade loses nothing.
+    extra: dict[str, Any] = field(default_factory=dict, compare=False)
+    # The stored ``tracking`` object as loaded, for the same reason.
+    tracking_raw: dict[str, Any] | None = field(default=None, compare=False)
 
     def status_lines(self) -> list[str]:
         """Return the managed status block, one entry per line."""
@@ -150,7 +154,12 @@ def _encode_package(package: Package) -> dict[str, Any]:
         "status": str(package.status),
         "due": _encode_due(package.due),
         "completed": _encode_due(package.completed),
-        "tracking": _encode_tracking(package.tracking),
+        "tracking": (
+            package.tracking_raw
+            if package.tracking_raw is not None
+            and _decode_tracking(package.tracking_raw) == package.tracking
+            else _encode_tracking(package.tracking)
+        ),
     }
 
 
@@ -172,7 +181,8 @@ def _decode_package(data: dict[str, Any]) -> Package | None:
         status=status,
         due=_decode_due(data.get("due")),
         completed=completed if isinstance(completed, dt.datetime) else None,
-        tracking=_decode_tracking(data.get("tracking")),
+        tracking=_decode_tracking(tracking := data.get("tracking")),
+        tracking_raw=tracking if isinstance(tracking, dict) else None,
         extra={k: v for k, v in data.items() if k not in _KNOWN_KEYS},
     )
 

@@ -132,6 +132,10 @@ def test_find_tracking_number(text: str, expected: TrackingNumber) -> None:
             "Sent via USPS: tracking 9400 1000 0000 0000 0000 06",
             TrackingNumber(USPS_IMPB, BOTH),
         ),
+        (
+            f"(fedex: {FEDEX12})",
+            TrackingNumber(FEDEX12, (Carrier.FEDEX,), forced=True),
+        ),
     ],
 )
 def test_prefix_forces_carrier(text: str, expected: TrackingNumber) -> None:
@@ -156,6 +160,27 @@ def test_no_number(text: str | None) -> None:
     assert find_tracking_number(text) is None
 
 
-def test_groups_must_pass_check_digit() -> None:
+@pytest.mark.parametrize("text", ["Order 12345 67890 12345", "Order 12345-67890-12345"])
+def test_groups_must_pass_check_digit(text: str) -> None:
     """Groups aren't glued into an unchecked format (15-digit FedEx)."""
-    assert find_tracking_number("Order 12345 67890 12345") is None
+    assert find_tracking_number(text) is None
+
+
+def test_unchecked_format_as_one_token() -> None:
+    """An unchecked format written without separators is accepted."""
+    assert find_tracking_number("Order 123456789012345") == TrackingNumber(
+        "123456789012345", (Carrier.FEDEX,)
+    )
+
+
+def test_first_number_wins_over_later_prefix() -> None:
+    """A forced number later in the text doesn't beat an earlier number."""
+    assert find_tracking_number(f"{FEDEX12} then ups:{UPS}") == TrackingNumber(
+        FEDEX12, (Carrier.FEDEX,)
+    )
+
+
+def test_prefix_inside_url_is_ignored() -> None:
+    """A prefix inside a URL isn't a forced number."""
+    text = f"Order https://shop.example/track/fedex:{FEDEX12} for {UPS}"
+    assert find_tracking_number(text) == TrackingNumber(UPS, (Carrier.UPS,))

@@ -26,10 +26,9 @@ import re
 
 from .const import Carrier
 
+_FORCED_RE = re.compile(r"(ups|fedex|usps):(.*)", re.IGNORECASE)
 # The forced number must contain a digit, so "USPS: tracking ..." isn't one.
-_FORCED_RE = re.compile(
-    r"\b(ups|fedex|usps):[ \t]?((?=[A-Za-z]*\d)[A-Za-z0-9]{6,40})\b", re.I
-)
+_FORCED_NUMBER_RE = re.compile(r"(?=[A-Z]*\d)[A-Z0-9]{6,40}")
 _PUNCTUATION = "()[]{}<>,.;:!?\"'*#"
 _MAX_GROUPS = 8
 _MAX_GROUP_LEN = 6
@@ -122,15 +121,41 @@ def classify(number: str) -> tuple[tuple[Carrier, ...], bool]:
     return (), False
 
 
+def _is_url(token: str) -> bool:
+    """URLs and email addresses never hold the tracking number we want."""
+    return (
+        "/" in token
+        or "@" in token
+        or "=" in token
+        or token.lower().lstrip(_PUNCTUATION).startswith("www.")
+    )
+
+
 def _clean(token: str) -> str | None:
     """Normalize one whitespace-separated token, or None to break a run."""
-    token = token.strip(_PUNCTUATION)
-    if not token or "/" in token or "@" in token or "=" in token:
+    if _is_url(token):
         return None
-    if token.lower().startswith("www."):
+    token = token.strip(_PUNCTUATION).replace("-", "").upper()
+    return token if token and token.isalnum() else None
+
+
+def _forced(token: str, following: str | None) -> TrackingNumber | None:
+    """Return the number after a ``ups:``/``fedex:``/``usps:`` prefix, if any.
+
+    The number may follow the colon directly or as the next token.
+    """
+    if _is_url(token):
         return None
-    token = token.replace("-", "").upper()
-    return token if token.isalnum() else None
+    match = _FORCED_RE.fullmatch(token.lstrip(_PUNCTUATION))
+    if match is None:
+        return None
+    text = match.group(2) or following
+    if text is None or _is_url(text):
+        return None
+    number = text.strip(_PUNCTUATION).replace("-", "").upper()
+    if not _FORCED_NUMBER_RE.fullmatch(number):
+        return None
+    return TrackingNumber(number, (Carrier(match.group(1).lower()),), forced=True)
 
 
 def _routing_free(number: str) -> str:
@@ -143,15 +168,12 @@ def find_tracking_number(text: str | None) -> TrackingNumber | None:
     if not text:
         return None
 
-    if forced := _FORCED_RE.search(text):
-        return TrackingNumber(
-            number=forced.group(2).upper(),
-            carriers=(Carrier(forced.group(1).lower()),),
-            forced=True,
-        )
-
-    tokens = [_clean(token) for token in text.split()]
+    raw = text.split()
+    tokens = [_clean(token) for token in raw]
     for start, first in enumerate(tokens):
+        following = raw[start + 1] if start + 1 < len(raw) else None
+        if (forced := _forced(raw[start], following)) is not None:
+            return forced
         if first is None:
             continue
         # Prefer the longest run of short groups that passes a check digit.
@@ -166,7 +188,8 @@ def find_tracking_number(text: str | None) -> TrackingNumber | None:
                 best = TrackingNumber(_routing_free(joined), carriers)
         if best is not None:
             return best
-        carriers, _ = classify(first)
-        if carriers:
+        # A hyphenated token is groups too, so it must pass a check digit.
+        carriers, checked = classify(first)
+        if carriers and (checked or "-" not in raw[start]):
             return TrackingNumber(_routing_free(first), carriers)
     return None

@@ -237,7 +237,12 @@ async def test_loads_newer_minor_version(
                     "status": "needs_action",
                     "due": "2026-11-24",
                     "completed": None,
-                    "tracking": {"number": UPS, "carriers": ["ups"], "forced": False},
+                    "tracking": {
+                        "number": UPS,
+                        "carriers": ["ups", "dhl"],
+                        "forced": False,
+                        "poll": {"next": "2026-11-24T10:00:00+00:00"},
+                    },
                     "poll": {"failures": 2},
                 },
                 "not a dict",
@@ -254,10 +259,12 @@ async def test_loads_newer_minor_version(
     assert item["due"] == "2026-11-24"
     assert item["description"].startswith("notes\n\n")
 
-    await _call(hass, "update_item", item="u1", rename="Roof rack")
+    await _call(hass, "update_item", item="u1", rename=f"Roof rack {UPS}")
     data = hass_storage["porchcast.entry1"]["data"]
     assert data["future"] is True
     assert data["items"][0]["poll"] == {"failures": 2}
+    assert data["items"][0]["tracking"]["carriers"] == ["ups", "dhl"]
+    assert data["items"][0]["tracking"]["poll"] == {"next": "2026-11-24T10:00:00+00:00"}
 
 
 async def test_remove_entry_deletes_storage(

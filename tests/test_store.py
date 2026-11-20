@@ -126,3 +126,23 @@ def test_decode_keeps_unknown_keys_and_tolerates_junk() -> None:
 
     assert _decode_package({"summary": "no uid"}) is None
     assert _decode_package({"uid": "x", "summary": "t", "tracking": {}}) is not None
+
+
+def test_unknown_tracking_data_survives_until_number_changes() -> None:
+    """Nested keys and unknown carriers are kept while the number is unchanged."""
+    tracking = {
+        "number": UPS,
+        "carriers": ["ups", "dhl"],
+        "forced": False,
+        "poll": {"failures": 2},
+    }
+    package = _decode_package({"uid": "a", "summary": "Rack", "tracking": tracking})
+    assert package is not None
+    assert _encode_package(package)["tracking"] == tracking
+
+    package.tracking = TrackingNumber("123456789012", (Carrier.FEDEX,))
+    assert _encode_package(package)["tracking"] == {
+        "number": "123456789012",
+        "carriers": ["fedex"],
+        "forced": False,
+    }
