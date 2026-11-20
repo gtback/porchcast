@@ -12,8 +12,23 @@ fires events when that changes.
 
 ## Status
 
-0.1.0 sets up the integration and an empty Packages list. Tracking arrives in
+0.2.0 keeps a Packages list and recognizes UPS, FedEx and USPS tracking
+numbers in each item. It doesn't contact any carrier yet; that arrives in
 later versions.
+
+## Using the list
+
+Add an item whose text contains a tracking number, with any notes you like,
+for example `Bike rack, REI 1Z999AA10123456784`. Spaces or hyphens inside the
+number are fine. The number can also go in the item's description.
+
+Porchcast writes a status block at the bottom of the description, under a
+`--- tracking ---` line. Everything above that line is your notes and is never
+changed. Edit the notes freely; leave the line in place.
+
+If Porchcast picks the wrong carrier, or doesn't recognize a number, put the
+carrier in front of it with no spaces in the number: `fedex:123456789012`,
+`ups:...` or `usps:...`. If an item has several numbers, the first one is used.
 
 ## Install
 

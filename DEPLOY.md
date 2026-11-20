@@ -33,8 +33,9 @@ Checked on 2026-11-19 against the HA 2026.11 release notes
 3. Settings → Marketplace → ⋮ → **Add from link** → `gtback/porchcast`. Connect
    GitHub when asked (device sign-in). Pick **Integration** if it asks for a
    type.
-4. Open Porchcast in the list → **Install**. The setup flow opens right away;
-   no restart is needed for a first install.
+4. Open Porchcast in the list → **Install**. Restart HA if it asks (the first
+   install on 2026-11-20 needed one), then Settings → Devices & services →
+   Add integration → Porchcast.
 5. Confirm the setup. A "Porchcast Packages" to-do list appears.
 6. Add the to-do list to a dashboard.
 
