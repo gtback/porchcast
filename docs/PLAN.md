@@ -63,3 +63,6 @@ PR whose body says what the owner must do in real HA.
   none. The key is newer than the 2026.10 dev pin, and its docs host
   (contributors.home-assistant.io) is blocked here. Revisit when the pins move
   to 2026.11.
+- **First install needed a restart** (owner, 2026-11-20). DEPLOY.md's "First
+  install" step 4 says no restart is needed; change it to "restart if HA asks"
+  in Session 2's PR. Not yet known why HA couldn't load it without restarting.
