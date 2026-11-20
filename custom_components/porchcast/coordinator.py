@@ -24,6 +24,7 @@ from .carriers.base import (
     Eta,
     NotFoundError,
     RateLimitedError,
+    RequestError,
     Status,
     TrackingResult,
 )
@@ -154,6 +155,11 @@ class PorchcastCoordinator(DataUpdateCoordinator[None]):
                 if package in self.packages and package.tracking is tracking:
                     _set_problem(package, auth_failed_line(carrier))
                 return True
+            except RequestError as err:
+                # This package's problem, not the carrier's: no backoff.
+                _LOGGER.warning("%s: %s", CARRIER_NAMES[carrier], err)
+                error = err
+                break
             except CarrierError as err:
                 _LOGGER.warning("%s: %s", CARRIER_NAMES[carrier], err)
                 retry_after = (
@@ -202,11 +208,13 @@ class PorchcastCoordinator(DataUpdateCoordinator[None]):
         poll.problem = None
         poll.next_poll = next_poll_after_success(result.status, now)
         if result.eta is not None:
-            # The carrier's estimate replaces the due date, even one the user
-            # typed. The due date is the end of the range: HA shows an item as
-            # overdue once its due date passes.
             poll.eta = result.eta
-            package.due = result.eta.end
+        if poll.eta is not None:
+            # Once known, the carrier's estimate (the latest one, kept when an
+            # answer has none) replaces the due date on every poll, even one
+            # the user typed. The due date is the end of the range: HA shows
+            # an item as overdue once its due date passes.
+            package.due = poll.eta.end
 
         if result.eta is not None and result.eta != old_eta:
             self._fire_eta_changed(package, old_eta, result.eta)

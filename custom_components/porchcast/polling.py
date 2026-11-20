@@ -29,9 +29,13 @@ MAX_FAILURES: Final = 5
 RETRY: Final = dt.timedelta(minutes=30)
 
 # Carrier-wide backoff after a rate limit or an outage: 15 min, doubling, up
-# to 2 h, unless the carrier says how long to wait.
+# to 2 h, unless the carrier says how long to wait. A carrier's Retry-After is
+# honored in full, up to a day (a sanity limit against a garbled header).
 BACKOFF_START: Final = dt.timedelta(minutes=15)
 BACKOFF_MAX: Final = dt.timedelta(hours=2)
+RETRY_AFTER_MAX: Final = dt.timedelta(days=1)
+# 15 min * 2**3 already exceeds 2 h; capping the exponent avoids overflow.
+_MAX_DOUBLINGS: Final = 8
 
 
 def next_poll_after_success(status: Status, now: dt.datetime) -> dt.datetime | None:
@@ -65,9 +69,10 @@ class Backoff:
         """Record a carrier-wide failure."""
         self.failures += 1
         if retry_after is not None and retry_after > 0:
-            delay = min(dt.timedelta(seconds=retry_after), BACKOFF_MAX)
+            delay = min(dt.timedelta(seconds=retry_after), RETRY_AFTER_MAX)
         else:
-            delay = min(BACKOFF_START * 2 ** (self.failures - 1), BACKOFF_MAX)
+            doublings = min(self.failures - 1, _MAX_DOUBLINGS)
+            delay = min(BACKOFF_START * 2**doublings, BACKOFF_MAX)
         self.until = now + delay
 
     def succeeded(self) -> None:

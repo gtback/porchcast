@@ -83,6 +83,14 @@ class RateLimitedError(CarrierError):
         self.retry_after = retry_after
 
 
+class RequestError(CarrierError):
+    """The carrier refused this one request (e.g. HTTP 400 for a bad number).
+
+    It says nothing about the carrier's health, so it doesn't back off the
+    carrier; only the package's own retries apply.
+    """
+
+
 class NotFoundError(CarrierError):
     """The carrier has no data for this number (not yet, or not theirs)."""
 

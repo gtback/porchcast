@@ -50,9 +50,38 @@ DROP_KEYS = {
 ADDRESS_KEEP = {"countryCode", "country"}
 
 
+def _numbers(value: Any) -> set[str]:
+    """Every tracking or inquiry number in a response."""
+    found: set[str] = set()
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if key in ("trackingNumber", "inquiryNumber") and isinstance(item, str):
+                found.add(item)
+            else:
+                found |= _numbers(item)
+    elif isinstance(value, list):
+        for item in value:
+            found |= _numbers(item)
+    return found
+
+
 def scrub(body: Any, number: str) -> Any:
-    """Return a copy of a carrier response that is safe for a public repo."""
+    """Return a copy of a carrier response that is safe for a public repo.
+
+    The looked-up number becomes UPS's sample number; any other number in the
+    response (a multi-package shipment) becomes a numbered placeholder.
+    """
     cities: dict[str, str] = {}
+    others = sorted(_numbers(body) - {number, SAMPLE_NUMBER})
+    replacements = {number: SAMPLE_NUMBER} | {
+        other: f"1ZSAMPLE{i:010d}" for i, other in enumerate(others, start=1)
+    }
+
+    def anonymize(text: str) -> str:
+        # Longest first, so a number inside another is replaced cleanly.
+        for real in sorted(replacements, key=len, reverse=True):
+            text = text.replace(real, replacements[real])
+        return text
 
     def walk(value: Any) -> Any:
         if isinstance(value, dict):
@@ -70,7 +99,7 @@ def scrub(body: Any, number: str) -> Any:
         if isinstance(value, list):
             return [walk(item) for item in value]
         if isinstance(value, str):
-            return value.replace(number, SAMPLE_NUMBER)
+            return anonymize(value)
         return value
 
     def address(value: dict[str, Any]) -> dict[str, Any]:

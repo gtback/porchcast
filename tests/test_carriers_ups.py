@@ -19,6 +19,7 @@ from custom_components.porchcast.carriers.base import (
     Event,
     NotFoundError,
     RateLimitedError,
+    RequestError,
     Status,
 )
 from custom_components.porchcast.carriers.ups import UpsClient, parse_track_response
@@ -130,6 +131,7 @@ def test_unknown_status_type() -> None:
             NotFoundError,
         ),
         (200, {}, NotFoundError),
+        (400, fixture("ups/not_found"), RequestError),
         (403, {}, AuthError),
         (500, {}, CarrierError),
     ],

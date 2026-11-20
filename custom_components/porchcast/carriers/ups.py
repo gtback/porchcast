@@ -21,6 +21,7 @@ from .base import (
     Event,
     NotFoundError,
     RateLimitedError,
+    RequestError,
     Status,
     TrackingResult,
 )
@@ -201,6 +202,8 @@ def parse_track_response(
         raise AuthError(f"UPS refused tracking: {_error_text(body)}")
     if status == 401:
         raise AuthError("UPS rejected the token twice")
+    if status == 400:
+        raise RequestError(f"UPS refused the request: {_error_text(body)}")
     if status != 200:
         raise CarrierError(f"UPS returned HTTP {status}: {_error_text(body)}")
 

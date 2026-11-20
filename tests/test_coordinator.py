@@ -257,6 +257,13 @@ async def test_typed_due_date_kept_until_estimate(
     [item] = await _items(hass)
     assert item["due"] == "2026-11-24"
 
+    # ...even when that poll's answer has no ETA: the last one is reapplied.
+    await _call(hass, "update_item", item=item["uid"], due_date="2026-12-05")
+    _ups(aioclient_mock, "label_created")
+    await _later(hass, entry, freezer, dt.timedelta(hours=2))
+    [item] = await _items(hass)
+    assert item["due"] == "2026-11-24"
+
 
 async def test_delivered_completes_item_and_stops_polling(
     hass: HomeAssistant,
@@ -449,3 +456,21 @@ async def test_item_deleted_during_poll(
     assert _track_calls(aioclient_mock) == 1
     await hass.async_block_till_done()
     assert events == []
+
+
+async def test_bad_request_doesnt_back_off_carrier(
+    hass: HomeAssistant,
+    entry: MockConfigEntry,
+    aioclient_mock: AiohttpClientMocker,
+    freezer: FrozenDateTimeFactory,
+) -> None:
+    """A 400 for one number counts against that package only."""
+    _ups(aioclient_mock, "not_found", status=400)
+    _ups(aioclient_mock, "in_transit", url=OTHER_URL)
+    await _call(hass, "add_item", item=UPS_NUMBER)
+    await _call(hass, "add_item", item=OTHER_NUMBER)
+    await _coordinator(entry).async_refresh()
+    await hass.async_block_till_done()
+    assert _package(entry).poll.failures == 1
+    # The other package was still polled in the same pass.
+    assert _package(entry, 1).poll.status == "in_transit"

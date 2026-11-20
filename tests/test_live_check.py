@@ -51,3 +51,23 @@ def test_scrub_removes_personal_data() -> None:
         "stateProvince": "ST",
     }
     assert package["deliveryInformation"] == {"location": "Front Door"}
+
+
+def test_scrub_replaces_every_returned_number() -> None:
+    """Other packages' numbers in a shipment are anonymized too."""
+    other = "1ZOTHER000000000002"
+    body = fixture("ups/in_transit")
+    shipment = body["trackResponse"]["shipment"][0]
+    shipment["inquiryNumber"] = REAL
+    first = shipment["package"][0]
+    first["trackingNumber"] = REAL
+    second = json.loads(json.dumps(first))
+    second["trackingNumber"] = other
+    second["activity"][0]["status"]["description"] = f"Moved with {other}"
+    shipment["package"].append(second)
+
+    text = json.dumps(_script().scrub(body, REAL))
+    assert REAL not in text
+    assert other not in text
+    assert "1ZSAMPLE0000000001" in text
+    assert "1Z999AA10123456784" in text
