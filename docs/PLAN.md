@@ -97,3 +97,18 @@ PR whose body says what the owner must do in real HA.
 - **Move is supported** (cheap, and list order matters on a phone).
 - **Removing the entry deletes the store** (`async_remove_entry`).
 - **DEPLOY.md first install** now says to restart if HA asks (fixed in PR #2).
+
+### 2026-11-20 (owner, after Session 2)
+
+- **Due date is the end of the expected range, everywhere.** This replaces the
+  brief's "use the window start". A multi-day range ("Nov 24-28") sets the due
+  date to the last day; a same-day time window ("2-6 pm") sets the due
+  datetime to the window's end. Reason: HA marks an item overdue once its due
+  passes, so a start date shows on-time packages as overdue.
+- **The status block shows the full range or window** ("Expected Nov 24-28",
+  "Expected Nov 24, 2-6 pm").
+- **`porchcast_eta_changed` carries both ends** (old and new start and end), so
+  a later "start watching at this time" automation can trigger on the start.
+  No such automation ships for now.
+- **A due date the owner typed in is kept until the carrier gives an
+  estimate**; from then on the carrier's estimate replaces it on each poll.
