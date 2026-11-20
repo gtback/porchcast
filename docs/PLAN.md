@@ -9,7 +9,7 @@ merged; each session builds on `main`.
 | # | Session | Version | Status |
 | --- | --- | --- | --- |
 | 1 | Scaffold and pipeline | 0.1.0 | Done 2026-11-20 (PR #1; installed via Marketplace) |
-| 2 | Items and storage | 0.2.0 | Merged 2026-11-20 (PR #2); owner check in real HA pending |
+| 2 | Items and storage | 0.2.0 | Done 2026-11-20 (PR #2; owner added items in real HA) |
 | 3 | UPS end to end | 0.3.0 | Not started |
 | 4 | FedEx | 0.4.0 | Not started |
 | 5 | USPS | 0.5.0 | Not started |
@@ -112,3 +112,9 @@ PR whose body says what the owner must do in real HA.
   No such automation ships for now.
 - **A due date the owner typed in is kept until the carrier gives an
   estimate**; from then on the carrier's estimate replaces it on each poll.
+- **Estimate history is deferred.** Store only the current estimate. Each
+  change still fires `porchcast_eta_changed` with old and new values, so an
+  automation can log slips. If history on the item is wanted later, add a
+  free-text line to the status block (not the notes); no structured history.
+- **Session 2 closed** 2026-11-20: the owner updated to 0.2.0 and added items
+  in real HA.
