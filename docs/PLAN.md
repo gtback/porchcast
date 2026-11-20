@@ -9,7 +9,7 @@ merged; each session builds on `main`.
 | # | Session | Version | Status |
 | --- | --- | --- | --- |
 | 1 | Scaffold and pipeline | 0.1.0 | Done 2026-11-20 (PR #1; installed via Marketplace) |
-| 2 | Items and storage | 0.2.0 | Not started |
+| 2 | Items and storage | 0.2.0 | PR #2 open |
 | 3 | UPS end to end | 0.3.0 | Not started |
 | 4 | FedEx | 0.4.0 | Not started |
 | 5 | USPS | 0.5.0 | Not started |
@@ -66,3 +66,30 @@ PR whose body says what the owner must do in real HA.
 - **First install needed a restart** (owner, 2026-11-20). DEPLOY.md's "First
   install" step 4 says no restart is needed; change it to "restart if HA asks"
   in Session 2's PR. Not yet known why HA couldn't load it without restarting.
+
+### 2026-11-20 (Session 2)
+
+- **Tracking-number formats and check digits** are in `docs/carriers.md`.
+- **Store**: one `Store` per entry, key `porchcast.<entry_id>`, version 1.1,
+  holding `{"items": [...]}` in list order. Each item is `uid` (ULID),
+  `summary`, `notes`, `status`, `due` (ISO date or aware datetime),
+  `completed`, and `tracking` (`number`, `carriers`, `forced`). HA doesn't
+  store to-do items for an integration, so the store keeps our text too.
+- **Migration approach**: schema changes add keys and bump the minor version.
+  HA's `Store` passes a different minor version through unchanged, and
+  loading ignores unknown keys but keeps them on save (per item and at the top
+  level), so a rollback reads newer data and a later upgrade loses nothing. A
+  change that can't be additive bumps the major version and adds a step to
+  `_PackageStore._async_migrate_func`.
+- **Separator survival** (mobile app edits): the separator matches any run of
+  ASCII, en or em dashes, in any case, with extra spaces and CRLF line endings.
+  If the separator line is gone but the text still ends with the status block
+  we last rendered, that block is dropped; otherwise all the text is notes.
+  Notes are what's above the separator, trimmed.
+- **The tracking number is re-read on every edit**. Session 3 must reset poll
+  state when the number changes, and keep it when it doesn't.
+- **Due date** is whatever the user set, for now. Session 3's coordinator will
+  overwrite it with the carrier's ETA.
+- **Move is supported** (cheap, and list order matters on a phone).
+- **Removing the entry deletes the store** (`async_remove_entry`).
+- **DEPLOY.md first install** now says to restart if HA asks (fixed in PR #2).
