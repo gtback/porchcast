@@ -139,7 +139,8 @@ PR whose body says what the owner must do in real HA.
 - **Polling**: per-status intervals from the brief. A failed poll retries in
   30 min (or the status interval, if shorter); after 5 failures in a row the
   block says so and polling drops to every 6 h. Carrier backoff on 429, 5xx or
-  network errors: `Retry-After`, else 15 min doubling to 2 h. A rejected
+  network errors: `Retry-After` in full (up to a day), else 15 min doubling
+  to 2 h. A 400 for one number doesn't back off the carrier (Copilot review). A rejected
   credential stops that carrier until reauth reloads the entry; it doesn't
   count as a package failure. Polls never run concurrently.
 - **New or re-numbered items are polled at once** (in a task, so adding an
@@ -149,6 +150,7 @@ PR whose body says what the owner must do in real HA.
   or fire again; unchecking an item checked off by hand does resume. The due
   date stays the last ETA.
 - **ETA kept when the carrier stops giving one** (e.g. on delivery), and
+  reapplied to the due date on every successful poll, and
   `porchcast_eta_changed` fires only for a new, known ETA.
 - **Events**: `porchcast_eta_changed` carries `old_eta_start`, `old_eta_end`,
   `new_eta_start`, `new_eta_end` (ISO dates or datetimes) and `status`;

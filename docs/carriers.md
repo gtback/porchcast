@@ -84,8 +84,9 @@ linked from the spec were not read.
   long-standing API; not in the spec), or a 200 with only `warnings`.
 - **Rate limits**: the spec publishes none beyond a 429 response, and reads
   no `Retry-After`. Modeled as: on 429, 5xx or a network error, leave UPS
-  alone for `Retry-After` if sent, else 15 min doubling to 2 h; reset on any
-  answer. Data rolls off after 120 days.
+  alone for `Retry-After` if sent (in full, up to a day), else 15 min
+  doubling to 2 h; reset on any answer. A tracking 400 (invalid request) counts
+  against that package only, with no carrier backoff. Data rolls off after 120 days.
 - **Unverified**: everything above that the spec doesn't show (status codes,
   the 404 body, whether `expires_in` stays ~4 h). The fixtures in
   `tests/fixtures/ups/` are synthetic, shaped after the spec.
