@@ -10,7 +10,7 @@ merged; each session builds on `main`.
 | --- | --- | --- | --- |
 | 1 | Scaffold and pipeline | 0.1.0 | Done 2026-11-20 (PR #1; installed via Marketplace) |
 | 2 | Items and storage | 0.2.0 | Done 2026-11-20 (PR #2; owner added items in real HA) |
-| 3 | UPS end to end | 0.3.0 | Merged 2026-11-20 (PR #3); owner real-package test pending |
+| 3 | UPS end to end | 0.3.0 | Merged 2026-11-20 (PR #3); real-package test blocked on UPS keys |
 | 4 | FedEx | 0.4.0 | Not started |
 | 5 | USPS | 0.5.0 | Not started |
 | 6 | Finish | 0.6.0 | Not started |
@@ -168,3 +168,18 @@ PR whose body says what the owner must do in real HA.
 - **mypy** now uses `explicit_package_bases`, so modules are named
   `custom_components.porchcast.*`. Before this the strict override for
   `tracking` and `carriers.*` matched no module; it now applies (and passes).
+
+### 2026-11-25 (owner, after Session 3)
+
+- **0.3.0 is installed** in real HA (owner, 2026-11-20).
+- **UPS keys are blocked on UPS's side.** The developer portal's App Summary
+  shows "There is a non-technical issue with your request..." with a resolve
+  link, and My Apps lists no credentials, even though OAuth and Tracking are
+  approved. UPS support hasn't resolved it. Ideas not yet tried: complete
+  what the resolve link asks; a new app with only OAuth and Tracking and no
+  billing account. Until then Session 3's real-package test (and checking the
+  unverified UPS status codes) waits.
+- **DEPLOY.md's UPS steps need fixing** once the owner gets keys: they were
+  written without seeing the portal and don't cover this hold.
+- **Session 4 (FedEx) goes ahead meanwhile.** The config/reconfigure form
+  requires at least one carrier, so FedEx alone must be enough to save it.
